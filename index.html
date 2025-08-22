@@ -20,7 +20,7 @@
     .sub { color: var(--muted); font-size: 14px; margin: 0; }
     header { display: flex; gap: 12px; flex-direction: column; }
     @media (min-width: 640px) { header { flex-direction: row; align-items: center; justify-content: space-between; } }
-    .btn { border:1px solid #e2e8f0; background:#fff; padding:10px 14px; border-radius: 16px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); font-size:14px; }
+    .btn { border:1px solid #e2e8f0; background:#fff; padding:10px 14px; border-radius: 16px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); font-size:14px; cursor:pointer; }
     .btn.primary { background: var(--accent); color:#fff; border-color: var(--accent); }
     .btn.primary:hover { filter: brightness(0.95); }
     .btn:hover { box-shadow: 0 2px 6px rgb(0 0 0 / 0.08); }
@@ -50,6 +50,8 @@
     iframe { width:100%; height:100%; border:0; }
     .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; color:#3730a3; }
     .danger { color:#b91c1c; } .link { color:#2563eb; cursor: pointer; }
+    .row-inline { display:flex; gap:8px; align-items:end; }
+    .small { font-size: 12px; }
   </style>
 </head>
 <body>
@@ -72,7 +74,12 @@
       <label class="block"><span class="label">Client Phone</span><input id="clientPhone" type="text" value="(555) 555-1234" placeholder="(###) ###-####"></label>
       <label class="block" style="grid-column: span 2;"><span class="label">Service Address</span><input id="serviceAddress" type="text" value="123 Commerce Dr, Dallas, TX" placeholder="Street, City, ST"></label>
       <label class="block"><span class="label">Project / Property Name</span><input id="projectName" type="text" value="Fast-Trak HQ" placeholder="e.g., Corporate HQ"></label>
-      <label class="block"><span class="label">Miles from 75409</span><input id="miles" type="number" value="12" placeholder="e.g., 42"></label>
+      <div class="row-inline">
+        <label class="block" style="min-width: 160px;"><span class="label">Job ZIP Code</span><input id="jobZip" type="text" value="" placeholder="e.g., 75001"></label>
+        <label class="block" style="min-width: 160px;"><span class="label">Miles from 75409</span><input id="miles" type="number" value="12" placeholder="e.g., 42"></label>
+        <button class="btn" id="btnAutoMiles" title="Calculate by ZIP">Auto‑calc distance</button>
+      </div>
+      <div class="small muted">Auto‑calc uses public ZIP geolocation (Zippopotam.us) and Haversine distance. Manual override always allowed.</div>
     </section>
 
     <!-- Line Items -->
@@ -182,6 +189,25 @@ const money = (n) => isNaN(n) ? "$0.00" : `$${n.toFixed(2)}`;
 const num = (v, fb=0) => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? fb : n; };
 const escapeHtml = (s) => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll(\"'\",\"&#39;\");
 
+async function zipToLatLng(zip){
+  const res = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`);
+  if(!res.ok) throw new Error('Invalid ZIP');
+  const data = await res.json();
+  const place = data.places && data.places[0];
+  if(!place) throw new Error('ZIP not found');
+  return { lat: parseFloat(place['latitude']), lng: parseFloat(place['longitude']) };
+}
+function haversineMiles(a, b){
+  const R = 3958.8; // miles
+  const toRad = (d)=> d * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
 // ---------- Data ----------
 let rows = [
   { id: 1, area: 'Lobby North', widthIn: 48, heightIn: 72, qty: 2, notes: '' },
@@ -234,12 +260,8 @@ function renderRows(){
       </td>`;
     tbody.appendChild(tr);
   });
-  bindRowEvents();
-  updateTotalsAndPricing();
-}
-
-function bindRowEvents(){
-  $("#rows").addEventListener('input', (e)=>{
+  // Bind handlers via properties to avoid stacking
+  tbody.oninput = (e)=>{
     const t = e.target;
     if(!t.dataset.id) return;
     const id = Number(t.dataset.id);
@@ -247,16 +269,18 @@ function bindRowEvents(){
     const row = rows.find(r=>r.id===id);
     if(!row) return;
     row[key] = key==='area' || key==='notes' ? t.value : num(t.value);
-    renderRows();
-  }, { once:true }); // reattach on each render
-
-  $("#rows").addEventListener('click', (e)=>{
+    updateTotalsAndPricing();
+    // Update only the changed row SQFT cell
+    renderRows(); // keep simple & robust
+  };
+  tbody.onclick = (e)=>{
     const t = e.target;
     if(!t.dataset.act) return;
     const id = Number(t.dataset.id);
     if(t.dataset.act==='del'){ rows = rows.filter(r=>r.id!==id); renderRows(); }
     if(t.dataset.act==='dup'){ const src = rows.find(r=>r.id===id); if(src){ rows.push({...src, id: nextRowId++}); renderRows(); } }
-  }, { once:true });
+  };
+  updateTotalsAndPricing();
 }
 
 function findBracket(matrix, sqft){ return matrix.find(t=> sqft>=t.min && sqft<=t.max) || matrix[0]; }
@@ -370,7 +394,7 @@ function renderMatrixEditor(container, matrix, onChange){
       <div style="grid-column: 12 / span 1; justify-self: end;"><span class="link danger" data-i="${i}" data-act="remove">Remove</span></div>`;
     container.appendChild(row);
   });
-  container.addEventListener('input', (e)=>{
+  container.oninput = (e)=>{
     const t = e.target; const i = Number(t.dataset.i); const k = t.dataset.k; if(isNaN(i) || !k) return;
     const patch = {};
     if(k==='max'){ patch[k] = t.value==='Infinity' ? Infinity : num(t.value); }
@@ -378,11 +402,11 @@ function renderMatrixEditor(container, matrix, onChange){
     else { patch[k] = num(t.value); }
     matrix[i] = { ...matrix[i], ...patch };
     onChange(matrix);
-  }, { once:true });
-  container.addEventListener('click', (e)=>{
+  };
+  container.onclick = (e)=>{
     const t = e.target; if(t.dataset.act!=='remove') return;
     const i = Number(t.dataset.i); matrix.splice(i,1); onChange(matrix);
-  }, { once:true });
+  };
 }
 
 function openSettings(){
@@ -411,7 +435,7 @@ $("#copyPlain").onclick = async ()=>{
   catch(e){ alert('Clipboard not available. Select and copy from the preview.'); }
 };
 
-// ---------- Events ----------
+// ---------- Events (static) ----------
 $("#btnAddRow").onclick = ()=>{ rows.push({ id: nextRowId++, area:'', widthIn:0, heightIn:0, qty:1, notes:'' }); renderRows(); };
 $("#btnSettings").onclick = openSettings;
 $("#btnEmail").onclick = openEmail;
@@ -421,10 +445,26 @@ $("#btnCopy").onclick = ()=>{
   const text = div.innerText;
   navigator.clipboard.writeText(text).then(()=> alert('Email (plain text) copied.')).catch(()=> alert('Clipboard not available. Open preview to copy.'));
 };
-$("#miles").addEventListener('input', updateTotalsAndPricing);
-$("#projectName").addEventListener('input', ()=>{});
-$("#firstName").addEventListener('input', ()=>{});
-$("#serviceAddress").addEventListener('input', ()=>{});
+$("#miles").oninput = updateTotalsAndPricing;
+
+// Auto-calc distance from Job ZIP to 75409
+$("#btnAutoMiles").onclick = async ()=>{
+  const btn = $("#btnAutoMiles");
+  const jobZip = $("#jobZip").value.trim();
+  if(!/^\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; }
+  btn.disabled = true; const oldText = btn.textContent; btn.textContent = 'Calculating…';
+  try {
+    const [shop, job] = await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]);
+    const miles = haversineMiles(shop, job);
+    const rounded = Math.round(miles);
+    $("#miles").value = String(rounded);
+    updateTotalsAndPricing();
+  } catch(e){
+    alert('Could not resolve ZIP distance. You can enter miles manually.');
+  } finally {
+    btn.disabled = false; btn.textContent = oldText;
+  }
+};
 
 // Initial render
 renderRows();
