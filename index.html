@@ -187,7 +187,14 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const money = (n) => isNaN(n) ? "$0.00" : `$${n.toFixed(2)}`;
 const num = (v, fb=0) => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? fb : n; };
-const escapeHtml = (s) => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll(\"'\",\"&#39;\");
+function escapeHtml(s){
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
 
 async function zipToLatLng(zip){
   const res = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`);
@@ -242,7 +249,8 @@ function rowSqft(r){ return ((num(r.widthIn) || 0) * (num(r.heightIn) || 0) * (n
 function totalSqft(){ return rows.reduce((a,r)=>a+rowSqft(r),0); }
 
 function renderRows(){
-  const tbody = $("#rows");
+  const tbody = document.getElementById("rows");
+  if(!tbody) return;
   tbody.innerHTML = "";
   rows.forEach(r => {
     const tr = document.createElement('tr');
@@ -260,22 +268,20 @@ function renderRows(){
       </td>`;
     tbody.appendChild(tr);
   });
-  // Bind handlers via properties to avoid stacking
+  // Delegate inputs
   tbody.oninput = (e)=>{
     const t = e.target;
-    if(!t.dataset.id) return;
+    if(!t.dataset || !t.dataset.id) return;
     const id = Number(t.dataset.id);
     const key = t.dataset.k;
     const row = rows.find(r=>r.id===id);
     if(!row) return;
-    row[key] = key==='area' || key==='notes' ? t.value : num(t.value);
-    updateTotalsAndPricing();
-    // Update only the changed row SQFT cell
-    renderRows(); // keep simple & robust
+    row[key] = (key==='area' || key==='notes') ? t.value : num(t.value);
+    renderRows();
   };
   tbody.onclick = (e)=>{
     const t = e.target;
-    if(!t.dataset.act) return;
+    if(!t.dataset || !t.dataset.act) return;
     const id = Number(t.dataset.id);
     if(t.dataset.act==='del'){ rows = rows.filter(r=>r.id!==id); renderRows(); }
     if(t.dataset.act==='dup'){ const src = rows.find(r=>r.id===id); if(src){ rows.push({...src, id: nextRowId++}); renderRows(); } }
@@ -302,32 +308,38 @@ function calcFilm(matrix, sqft, miles){
 
 function updateTotalsAndPricing(){
   const sqft = totalSqft();
-  $("#totalSqft").textContent = sqft.toFixed(2);
-  const miles = num($("#miles").value,0);
-  $("#milesEcho").textContent = miles;
+  const totalEl = document.getElementById("totalSqft");
+  if (totalEl) totalEl.textContent = sqft.toFixed(2);
+  const milesEl = document.getElementById("miles");
+  const milesVal = milesEl ? num(milesEl.value,0) : 0;
+  const milesEcho = document.getElementById("milesEcho");
+  if (milesEcho) milesEcho.textContent = milesVal;
 
-  const cer = calcFilm(ceramicMatrix, sqft, miles);
-  const sol = calcFilm(solarMatrix, sqft, miles);
+  const cer = calcFilm(ceramicMatrix, sqft, milesVal);
+  const sol = calcFilm(solarMatrix, sqft, milesVal);
 
-  $("#cerOrig").textContent = money(cer.original);
-  $("#cerTier").textContent = cer.tierLabel;
-  $("#cerDisc").textContent = `${cer.tierPct}%`;
-  $("#cerFinal").textContent = money(cer.finalPrice);
-  $("#cerSave").textContent = money(cer.savings);
-
-  $("#solOrig").textContent = money(sol.original);
-  $("#solTier").textContent = sol.tierLabel;
-  $("#solDisc").textContent = `${sol.tierPct}%`;
-  $("#solFinal").textContent = money(sol.finalPrice);
-  $("#solSave").textContent = money(sol.savings);
+  const map = [
+    ["cerOrig", money(cer.original)],
+    ["cerTier", cer.tierLabel],
+    ["cerDisc", `${cer.tierPct}%`],
+    ["cerFinal", money(cer.finalPrice)],
+    ["cerSave", money(cer.savings)],
+    ["solOrig", money(sol.original)],
+    ["solTier", sol.tierLabel],
+    ["solDisc", `${sol.tierPct}%`],
+    ["solFinal", money(sol.finalPrice)],
+    ["solSave", money(sol.savings)],
+  ];
+  map.forEach(([id, val])=>{ const el = document.getElementById(id); if(el) el.textContent = val; });
 }
 
 function buildEmailHtml(){
-  const projectName = $("#projectName").value.trim();
-  const firstName = $("#firstName").value.trim();
-  const serviceAddress = $("#serviceAddress").value.trim();
+  const projectName = (document.getElementById("projectName")?.value || "").trim();
+  const firstName = (document.getElementById("firstName")?.value || "").trim();
+  const serviceAddress = (document.getElementById("serviceAddress")?.value || "").trim();
   const sqft = totalSqft();
-  const miles = num($("#miles").value,0);
+  const milesEl = document.getElementById("miles");
+  const miles = milesEl ? num(milesEl.value,0) : 0;
 
   const cer = calcFilm(ceramicMatrix, sqft, miles);
   const sol = calcFilm(solarMatrix, sqft, miles);
@@ -410,68 +422,91 @@ function renderMatrixEditor(container, matrix, onChange){
 }
 
 function openSettings(){
-  const modal = $("#settingsModal");
-  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
-  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
-  $("#addCerTier").onclick = ()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
-  $("#addSolTier").onclick = ()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
-  $("#btnCloseSettings").onclick = ()=>{ modal.style.display='none'; };
+  const modal = document.getElementById("settingsModal");
+  renderMatrixEditor(document.getElementById("ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
+  renderMatrixEditor(document.getElementById("solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
+  const closeBtn = document.getElementById("btnCloseSettings");
+  if(closeBtn){
+    closeBtn.onclick = ()=>{ modal.style.display='none'; };
+  }
+  const addCer = document.getElementById("addCerTier");
+  if(addCer){ addCer.onclick = ()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); }; }
+  const addSol = document.getElementById("addSolTier");
+  if(addSol){ addSol.onclick = ()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); }; }
   modal.style.display = 'flex';
 }
 
 // ---------- Email modal ----------
 function openEmail(){
   const html = buildEmailHtml();
-  $("#subjectEcho").textContent = $("#projectName").value.trim();
+  const subj = document.getElementById("subjectEcho");
+  if (subj) subj.textContent = document.getElementById("projectName")?.value || "";
   const frame = document.getElementById('emailFrame');
-  if ('srcdoc' in frame) { frame.srcdoc = html; }
-  else { frame.setAttribute('src', 'data:text/html;charset=utf-8,' + encodeURIComponent(html)); }
-  document.getElementById('emailModal').style.display = 'flex';
-}
-$("#closeEmail").onclick = ()=> $("#emailModal").style.display = 'none';
-$("#copyPlain").onclick = async ()=>{
-  const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
-  const text = div.innerText;
-  try { await navigator.clipboard.writeText(text); alert('Email (plain text) copied. Your mail app will use your signature.'); }
-  catch(e){ alert('Clipboard not available. Select and copy from the preview.'); }
-};
-
-// ---------- Events (static) ----------
-document.getElementById('btnAddRow').addEventListener('click', ()=>{ rows.push({ id: nextRowId++, area:'', widthIn:0, heightIn:0, qty:1, notes:'' }); renderRows(); });
-document.getElementById('btnSettings').addEventListener('click', openSettings);
-document.getElementById('btnEmail').addEventListener('click', openEmail);
-document.getElementById('btnEmail2').addEventListener('click', openEmail);
-document.getElementById('btnCopy').addEventListener('click', ()=>{
-  const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
-  const text = div.innerText;
-  navigator.clipboard.writeText(text).then(()=> alert('Email (plain text) copied.')).catch(()=> alert('Clipboard not available. Open preview to copy.'));
-});
-document.getElementById('miles').addEventListener('input', updateTotalsAndPricing);
-
-// Auto-calc distance from Job ZIP to 75409
-$("#btnAutoMiles").onclick = async ()=>{
-  const btn = $("#btnAutoMiles");
-  const jobZip = $("#jobZip").value.trim();
-  if(!/^\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; }
-  btn.disabled = true; const oldText = btn.textContent; btn.textContent = 'Calculating…';
-  try {
-    const [shop, job] = await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]);
-    const miles = haversineMiles(shop, job);
-    const rounded = Math.round(miles);
-    $("#miles").value = String(rounded);
-    updateTotalsAndPricing();
-  } catch(e){
-    alert('Could not resolve ZIP distance. You can enter miles manually.');
-  } finally {
-    btn.disabled = false; btn.textContent = oldText;
+  if (frame){
+    if ('srcdoc' in frame) { frame.srcdoc = html; }
+    else { frame.setAttribute('src', 'data:text/html;charset=utf-8,' + encodeURIComponent(html)); }
   }
-};
+  const modal = document.getElementById("emailModal");
+  if (modal) modal.style.display = 'flex';
+}
 
-// Initial render
-renderRows();
+// ---------- DOMContentLoaded bindings ----------
+document.addEventListener('DOMContentLoaded', () => {
+  const bind = (id, fn) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('click', fn, false);
+    el.addEventListener('touchend', (e)=>{ e.preventDefault(); fn(e); }, false);
+  };
+  bind('btnAddRow', ()=>{ rows.push({ id: nextRowId++, area:'', widthIn:0, heightIn:0, qty:1, notes:'' }); renderRows(); });
+  bind('btnSettings', openSettings);
+  bind('btnEmail', openEmail);
+  bind('btnEmail2', openEmail);
+  bind('btnCopy', ()=>{
+    const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
+    const text = div.innerText;
+    navigator.clipboard.writeText(text).then(()=> alert('Email (plain text) copied.')).catch(()=> alert('Clipboard not available. Open preview to copy.'));
+  });
+  const milesEl = document.getElementById('miles');
+  if (milesEl){
+    milesEl.addEventListener('input', updateTotalsAndPricing);
+    milesEl.addEventListener('change', updateTotalsAndPricing);
+  }
+  bind('closeEmail', ()=>{ const m = document.getElementById('emailModal'); if(m) m.style.display='none'; });
+  bind('copyPlain', async ()=>{
+    const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
+    const text = div.innerText;
+    try { await navigator.clipboard.writeText(text); alert('Email (plain text) copied.'); }
+    catch(e){ alert('Clipboard not available. Select and copy from the preview.'); }
+  });
+  const autoBtn = document.getElementById('btnAutoMiles');
+  if (autoBtn){
+    autoBtn.addEventListener('click', async ()=>{
+      const btn = document.getElementById('btnAutoMiles');
+      const jobZip = document.getElementById('jobZip').value.trim();
+      if(!/^\\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; }
+      btn.disabled = true; const oldText = btn.textContent; btn.textContent = 'Calculating…';
+      try {
+        const [shop, job] = await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]);
+        const miles = haversineMiles(shop, job);
+        const rounded = Math.round(miles);
+        document.getElementById('miles').value = String(rounded);
+        updateTotalsAndPricing();
+      } catch(e){
+        alert('Could not resolve ZIP distance. You can enter miles manually.');
+      } finally {
+        btn.disabled = false; btn.textContent = oldText;
+      }
+    }, false);
+    autoBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); autoBtn.click(); }, false);
+  }
+  // First render
+  renderRows();
+});
 
-// PWA registration
-if ('serviceWorker' in navigator) {
+// PWA registration (OFF by default to prevent cache conflicts during setup)
+const ENABLE_OFFLINE = false;
+if (ENABLE_OFFLINE && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js', { scope: './' });
   });
