@@ -50,7 +50,7 @@
     iframe { width:100%; height:100%; border:0; }
     .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; color:#3730a3; }
     .danger { color:#b91c1c; } .link { color:#2563eb; cursor: pointer; }
-    .row-inline { display:flex; gap:8px; align-items:end; }
+    .row-inline { display:flex; gap:8px; align-items:end; flex-wrap: wrap; }
     .small { font-size: 12px; }
   </style>
 </head>
@@ -61,9 +61,12 @@
         <h1>Dynamic Tintz — Quote Builder (PWA)</h1>
         <p class="sub">Responsive, mobile-first. Add to Home Screen on iPhone/iPad.</p>
       </div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; flex-wrap: wrap;">
         <button class="btn" id="btnSettings">Settings</button>
+        <button class="btn" id="btnSaveCustomer">Save Customer</button>
+        <button class="btn" id="btnCustomers">Customers</button>
         <button class="btn primary" id="btnEmail">Generate Email</button>
+        <button class="btn" id="btnOutlook">Open in Outlook</button>
       </div>
     </header>
 
@@ -77,9 +80,9 @@
       <div class="row-inline">
         <label class="block" style="min-width: 160px;"><span class="label">Job ZIP Code</span><input id="jobZip" type="text" value="" placeholder="e.g., 75001"></label>
         <label class="block" style="min-width: 160px;"><span class="label">Miles from 75409</span><input id="miles" type="number" value="12" placeholder="e.g., 42"></label>
-        <button class="btn" id="btnAutoMiles" title="Calculate by ZIP">Auto‑calc distance</button>
+        <button class="btn" id="btnAutoMiles" title="Calculate by ZIP">Auto-calc distance</button>
       </div>
-      <div class="small muted">Auto‑calc uses public ZIP geolocation (Zippopotam.us) and Haversine distance. Manual override always allowed.</div>
+      <div class="small muted">Auto-calc uses public ZIP geolocation (Zippopotam.us) and Haversine distance. Manual override always allowed.</div>
     </section>
 
     <!-- Line Items -->
@@ -141,6 +144,22 @@
       <button class="btn primary" id="btnEmail2">Generate Email</button>
       <button class="btn" id="btnCopy">Copy Email (Plain Text)</button>
     </section>
+
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v5</div>
+  </div>
+
+  <!-- Customers Modal -->
+  <div id="customersModal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <header>
+        <div><strong>Saved Customers</strong></div>
+        <button class="btn" id="closeCustomers">Close</button>
+      </header>
+      <div class="body" style="padding:12px 16px;">
+        <div class="muted" style="margin-bottom:8px;">Tap Load to populate the app. Delete removes the record from this device only.</div>
+        <div id="customersList"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Settings Drawer (modal) -->
@@ -215,6 +234,84 @@ function haversineMiles(a, b){
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+// ---------- Storage Helpers ----------
+const STORE_KEY = 'tintz.customers.v1';
+function getStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ return []; } }
+function setStore(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
+function serializeState(){
+  return {
+    firstName: $("#firstName")?.value || "",
+    clientEmail: $("#clientEmail")?.value || "",
+    clientPhone: $("#clientPhone")?.value || "",
+    serviceAddress: $("#serviceAddress")?.value || "",
+    projectName: $("#projectName")?.value || "",
+    jobZip: $("#jobZip")?.value || "",
+    miles: $("#miles")?.value || "0",
+    rows: rows,
+    ceramicMatrix: ceramicMatrix,
+    solarMatrix: solarMatrix,
+  };
+}
+function loadState(s){
+  if(!s) return;
+  $("#firstName").value = s.firstName || "";
+  $("#clientEmail").value = s.clientEmail || "";
+  $("#clientPhone").value = s.clientPhone || "";
+  $("#serviceAddress").value = s.serviceAddress || "";
+  $("#projectName").value = s.projectName || "";
+  $("#jobZip").value = s.jobZip || "";
+  $("#miles").value = s.miles || "0";
+  rows = Array.isArray(s.rows) ? s.rows.map(r => ({...r})) : [];
+  nextRowId = rows.reduce((m, r)=> Math.max(m, r.id||0), 0) + 1;
+  ceramicMatrix = Array.isArray(s.ceramicMatrix) ? s.ceramicMatrix.map(t => ({...t})) : ceramicMatrix;
+  solarMatrix = Array.isArray(s.solarMatrix) ? s.solarMatrix.map(t => ({...t})) : solarMatrix;
+  renderRows();
+}
+function openCustomersModal(){
+  const modal = $("#customersModal");
+  const list = $("#customersList");
+  const data = getStore();
+  list.innerHTML = '';
+  if(!data.length){
+    list.innerHTML = '<div class="muted">No customers saved yet.</div>';
+  } else {
+    data.forEach((rec, idx)=>{
+      const div = document.createElement('div');
+      div.className = 'card';
+      const created = rec.createdAt ? new Date(rec.createdAt).toLocaleString() : '';
+      div.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:start; gap:8px;">
+          <div>
+            <div><strong>${escapeHtml(rec.label || (rec.firstName || '') + ' — ' + (rec.projectName || ''))}</strong></div>
+            <div class="muted small">${escapeHtml(rec.clientEmail || '')} • ${escapeHtml(rec.projectName || '')}</div>
+            <div class="muted small">${escapeHtml(rec.serviceAddress || '')}</div>
+            <div class="muted small">Saved: ${escapeHtml(created)}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" data-idx="${idx}" data-act="load">Load</button>
+            <button class="btn" data-idx="${idx}" data-act="delete">Delete</button>
+          </div>
+        </div>`;
+      list.appendChild(div);
+    });
+    list.onclick = (e)=>{
+      const t = e.target; if(!t.dataset || t.dataset.idx===undefined) return;
+      const idx = Number(t.dataset.idx);
+      const data = getStore();
+      if(t.dataset.act==='load'){
+        loadState(data[idx]);
+        alert('Customer loaded.');
+      } else if(t.dataset.act==='delete'){
+        if(confirm('Delete this saved customer from this device?')){
+          data.splice(idx,1); setStore(data); openCustomersModal();
+        }
+      }
+    };
+  }
+  $("#closeCustomers").onclick = ()=>{ modal.style.display='none'; };
+  modal.style.display = 'flex';
+}
+
 // ---------- Data ----------
 let rows = [
   { id: 1, area: 'Lobby North', widthIn: 48, heightIn: 72, qty: 2, notes: '' },
@@ -249,7 +346,7 @@ function rowSqft(r){ return ((num(r.widthIn) || 0) * (num(r.heightIn) || 0) * (n
 function totalSqft(){ return rows.reduce((a,r)=>a+rowSqft(r),0); }
 
 function renderRows(){
-  const tbody = document.getElementById("rows");
+  const tbody = $("#rows");
   if(!tbody) return;
   tbody.innerHTML = "";
   rows.forEach(r => {
@@ -308,11 +405,11 @@ function calcFilm(matrix, sqft, miles){
 
 function updateTotalsAndPricing(){
   const sqft = totalSqft();
-  const totalEl = document.getElementById("totalSqft");
+  const totalEl = $("#totalSqft");
   if (totalEl) totalEl.textContent = sqft.toFixed(2);
-  const milesEl = document.getElementById("miles");
+  const milesEl = $("#miles");
   const milesVal = milesEl ? num(milesEl.value,0) : 0;
-  const milesEcho = document.getElementById("milesEcho");
+  const milesEcho = $("#milesEcho");
   if (milesEcho) milesEcho.textContent = milesVal;
 
   const cer = calcFilm(ceramicMatrix, sqft, milesVal);
@@ -334,12 +431,11 @@ function updateTotalsAndPricing(){
 }
 
 function buildEmailHtml(){
-  const projectName = (document.getElementById("projectName")?.value || "").trim();
-  const firstName = (document.getElementById("firstName")?.value || "").trim();
-  const serviceAddress = (document.getElementById("serviceAddress")?.value || "").trim();
+  const projectName = ($("#projectName")?.value || "").trim();
+  const firstName = ($("#firstName")?.value || "").trim();
+  const serviceAddress = ($("#serviceAddress")?.value || "").trim();
   const sqft = totalSqft();
-  const milesEl = document.getElementById("miles");
-  const miles = milesEl ? num(milesEl.value,0) : 0;
+  const miles = $("#miles") ? num($("#miles").value,0) : 0;
 
   const cer = calcFilm(ceramicMatrix, sqft, miles);
   const sol = calcFilm(solarMatrix, sqft, miles);
@@ -422,32 +518,36 @@ function renderMatrixEditor(container, matrix, onChange){
 }
 
 function openSettings(){
-  const modal = document.getElementById("settingsModal");
-  renderMatrixEditor(document.getElementById("ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
-  renderMatrixEditor(document.getElementById("solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
-  const closeBtn = document.getElementById("btnCloseSettings");
-  if(closeBtn){
-    closeBtn.onclick = ()=>{ modal.style.display='none'; };
-  }
-  const addCer = document.getElementById("addCerTier");
-  if(addCer){ addCer.onclick = ()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); }; }
-  const addSol = document.getElementById("addSolTier");
-  if(addSol){ addSol.onclick = ()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); }; }
+  const modal = $("#settingsModal");
+  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
+  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
+  $("#addCerTier").onclick = ()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
+  $("#addSolTier").onclick = ()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
+  $("#btnCloseSettings").onclick = ()=>{ modal.style.display='none'; };
   modal.style.display = 'flex';
 }
 
 // ---------- Email modal ----------
 function openEmail(){
   const html = buildEmailHtml();
-  const subj = document.getElementById("subjectEcho");
-  if (subj) subj.textContent = document.getElementById("projectName")?.value || "";
-  const frame = document.getElementById('emailFrame');
-  if (frame){
-    if ('srcdoc' in frame) { frame.srcdoc = html; }
-    else { frame.setAttribute('src', 'data:text/html;charset=utf-8,' + encodeURIComponent(html)); }
-  }
-  const modal = document.getElementById("emailModal");
-  if (modal) modal.style.display = 'flex';
+  $("#subjectEcho").textContent = $("#projectName").value.trim();
+  const frame = $("#emailFrame");
+  if ('srcdoc' in frame) { frame.srcdoc = html; }
+  else { frame.setAttribute('src', 'data:text/html;charset=utf-8,' + encodeURIComponent(html)); }
+  $("#emailModal").style.display = 'flex';
+}
+
+// Outlook compose deeplink (+ mailto fallback)
+function openOutlookCompose(){
+  const to = ($("#clientEmail")?.value || '').trim();
+  const subject = `Your Window Film Proposal — ${($("#projectName")?.value || '').trim()}`;
+  const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
+  const body = div.innerText;
+  const enc = encodeURIComponent;
+  const outlook = `ms-outlook://compose?to=${enc(to)}&subject=${enc(subject)}&body=${enc(body)}`;
+  const mailto = `mailto:${enc(to)}?subject=${enc(subject)}&body=${enc(body)}`;
+  window.location.href = outlook;
+  setTimeout(()=>{ window.location.href = mailto; }, 700);
 }
 
 // ---------- DOMContentLoaded bindings ----------
@@ -467,18 +567,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = div.innerText;
     navigator.clipboard.writeText(text).then(()=> alert('Email (plain text) copied.')).catch(()=> alert('Clipboard not available. Open preview to copy.'));
   });
+  bind('btnOutlook', openOutlookCompose);
+  bind('btnSaveCustomer', ()=>{
+    const state = serializeState();
+    const suggested = (state.firstName||'Customer') + ' — ' + (state.projectName||'Project');
+    const label = prompt('Save as:', suggested);
+    if(label===null) return;
+    const rec = { ...state, label, createdAt: Date.now() };
+    const data = getStore(); data.unshift(rec); setStore(data);
+    alert('Saved to this device.');
+  });
+  bind('btnCustomers', openCustomersModal);
   const milesEl = document.getElementById('miles');
   if (milesEl){
     milesEl.addEventListener('input', updateTotalsAndPricing);
     milesEl.addEventListener('change', updateTotalsAndPricing);
   }
-  bind('closeEmail', ()=>{ const m = document.getElementById('emailModal'); if(m) m.style.display='none'; });
-  bind('copyPlain', async ()=>{
-    const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
-    const text = div.innerText;
-    try { await navigator.clipboard.writeText(text); alert('Email (plain text) copied.'); }
-    catch(e){ alert('Clipboard not available. Select and copy from the preview.'); }
-  });
   const autoBtn = document.getElementById('btnAutoMiles');
   if (autoBtn){
     autoBtn.addEventListener('click', async ()=>{
