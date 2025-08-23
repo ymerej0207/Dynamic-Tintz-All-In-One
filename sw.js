@@ -1,1 +1,1 @@
-const CACHE = 'tintz-v1'; self.addEventListener('install', e=>self.skipWaiting()); self.addEventListener('activate', e=>self.clients.claim());
+const N='tintz-v6'; self.addEventListener('install', e=>self.skipWaiting()); self.addEventListener('activate', e=>self.clients.claim());

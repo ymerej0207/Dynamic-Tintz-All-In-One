@@ -9,10 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <title>Dynamic Tintz — Quote Builder (PWA)</title>
   <style>
-    :root {
-      --bg: #f1f5f9; --card:#fff; --ink:#0f172a; --muted:#475569; --accent:#2563eb; --ring:#93c5fd;
-      --radius: 16px;
-    }
+    :root { --bg: #f1f5f9; --card:#fff; --ink:#0f172a; --muted:#475569; --accent:#2563eb; --ring:#93c5fd; --radius: 16px; }
     * { box-sizing: border-box; }
     body { margin:0; font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color: var(--ink); background: var(--bg); }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
@@ -29,20 +26,15 @@
     @media (min-width: 1024px){ .grid.three { grid-template-columns: repeat(3, 1fr);} }
     label.block { display:block; }
     .label { font-size:12px; color: var(--muted); }
-    input[type=text], input[type=number], input[type=email] {
-      width: 100%; padding: 10px 12px; border-radius: 14px; border:1px solid #cbd5e1; background:#fff; margin-top:6px;
-      font-size: 16px; /* prevents iOS zoom */
-    }
+    input[type=text], input[type=number], input[type=email] { width: 100%; padding: 10px 12px; border-radius: 14px; border:1px solid #cbd5e1; background:#fff; margin-top:6px; font-size: 16px; }
     .card { background: var(--card); border:1px solid #e2e8f0; border-radius: var(--radius); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); padding: 16px; }
     table { width:100%; border-collapse: collapse; font-size:14px; }
     thead th { text-align:left; font-weight:600; color: var(--muted); background:#f1f5f9; padding:10px 8px; white-space: nowrap; }
     td { border-top:1px solid #e2e8f0; padding:8px; vertical-align: top; }
     .w-20 { width: 5rem; } .w-24 { width: 6rem; } .ta-r { text-align:right; }
     .muted { color: var(--muted); font-size: 12px; }
-    .cards { display:grid; gap:12px; }
-    @media (min-width: 1024px){ .cards { grid-template-columns: repeat(3, 1fr);} }
-    .ring { outline: 2px solid #93c5fd; }
-    .row { display:flex; align-items:center; justify-content: space-between; padding:6px 0; }
+    .cards { display:grid; gap:12px; } @media (min-width: 1024px){ .cards { grid-template-columns: repeat(3, 1fr);} }
+    .ring { outline: 2px solid #93c5fd; } .row { display:flex; align-items:center; justify-content: space-between; padding:6px 0; }
     .modal-backdrop { position:fixed; inset:0; background: rgb(0 0 0 / 0.4); display:flex; align-items:center; justify-content:center; padding: 1rem; }
     .modal { background:#fff; border-radius: 16px; width: min(900px, 100%); height: min(80vh, 100%); display:flex; flex-direction:column; overflow:hidden; }
     .modal header { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; display:flex; align-items:center; justify-content: space-between; }
@@ -70,7 +62,6 @@
       </div>
     </header>
 
-    <!-- Project Meta -->
     <section class="grid three" style="margin-top:16px;">
       <label class="block"><span class="label">Client First Name</span><input id="firstName" type="text" value="Claire" placeholder="First name"></label>
       <label class="block"><span class="label">Client Email</span><input id="clientEmail" type="email" value="claire@example.com" placeholder="email@domain.com"></label>
@@ -85,7 +76,6 @@
       <div class="small muted">Auto-calc uses public ZIP geolocation (Zippopotam.us) and Haversine distance. Manual override always allowed.</div>
     </section>
 
-    <!-- Line Items -->
     <section style="margin-top:20px;">
       <div style="display:flex; align-items:center; justify-content: space-between; margin-bottom:8px;">
         <h2 style="margin:0; font-size:18px;">Measurements / Line Items</h2>
@@ -111,7 +101,6 @@
       </div>
     </section>
 
-    <!-- Totals & Pricing -->
     <section style="margin-top:20px;" class="cards">
       <div class="card">
         <h3 style="margin:0 0 8px;">Totals</h3>
@@ -139,13 +128,12 @@
       </div>
     </section>
 
-    <!-- CTA -->
+    <!-- CTA: single button removed; keep copy only -->
     <section style="margin-top:16px; display:flex; gap:8px; flex-wrap: wrap;">
-      <button class="btn primary" id="btnEmail2">Generate Email</button>
       <button class="btn" id="btnCopy">Copy Email (Plain Text)</button>
     </section>
 
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v5</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v6</div>
   </div>
 
   <!-- Customers Modal -->
@@ -157,6 +145,7 @@
       </header>
       <div class="body" style="padding:12px 16px;">
         <div class="muted" style="margin-bottom:8px;">Tap Load to populate the app. Delete removes the record from this device only.</div>
+        <input id="customerSearch" type="text" placeholder="Search saved customers..." style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:14px; font-size:16px; margin-bottom:10px;">
         <div id="customersList"></div>
       </div>
     </div>
@@ -201,19 +190,12 @@
   </div>
 
 <script>
-// ---------- Utility ----------
+// Utility
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const money = (n) => isNaN(n) ? "$0.00" : `$${n.toFixed(2)}`;
 const num = (v, fb=0) => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? fb : n; };
-function escapeHtml(s){
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
-}
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 async function zipToLatLng(zip){
   const res = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`);
@@ -224,63 +206,45 @@ async function zipToLatLng(zip){
   return { lat: parseFloat(place['latitude']), lng: parseFloat(place['longitude']) };
 }
 function haversineMiles(a, b){
-  const R = 3958.8; // miles
-  const toRad = (d)=> d * Math.PI / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
+  const R = 3958.8; const toRad = (d)=> d * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat); const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat); const lat2 = toRad(b.lat);
   const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-// ---------- Storage Helpers ----------
+// Storage
 const STORE_KEY = 'tintz.customers.v1';
 function getStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ return []; } }
 function setStore(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
 function serializeState(){
-  return {
-    firstName: $("#firstName")?.value || "",
-    clientEmail: $("#clientEmail")?.value || "",
-    clientPhone: $("#clientPhone")?.value || "",
-    serviceAddress: $("#serviceAddress")?.value || "",
-    projectName: $("#projectName")?.value || "",
-    jobZip: $("#jobZip")?.value || "",
-    miles: $("#miles")?.value || "0",
-    rows: rows,
-    ceramicMatrix: ceramicMatrix,
-    solarMatrix: solarMatrix,
-  };
+  return { firstName: $("#firstName")?.value || "", clientEmail: $("#clientEmail")?.value || "", clientPhone: $("#clientPhone")?.value || "",
+    serviceAddress: $("#serviceAddress")?.value || "", projectName: $("#projectName")?.value || "", jobZip: $("#jobZip")?.value || "", miles: $("#miles")?.value || "0",
+    rows: rows, ceramicMatrix: ceramicMatrix, solarMatrix: solarMatrix };
 }
 function loadState(s){
   if(!s) return;
-  $("#firstName").value = s.firstName || "";
-  $("#clientEmail").value = s.clientEmail || "";
-  $("#clientPhone").value = s.clientPhone || "";
-  $("#serviceAddress").value = s.serviceAddress || "";
-  $("#projectName").value = s.projectName || "";
-  $("#jobZip").value = s.jobZip || "";
-  $("#miles").value = s.miles || "0";
-  rows = Array.isArray(s.rows) ? s.rows.map(r => ({...r})) : [];
+  $("#firstName").value = s.firstName || ""; $("#clientEmail").value = s.clientEmail || ""; $("#clientPhone").value = s.clientPhone || "";
+  $("#serviceAddress").value = s.serviceAddress || ""; $("#projectName").value = s.projectName || ""; $("#jobZip").value = s.jobZip || "";
+  $("#miles").value = s.miles || "0"; rows = Array.isArray(s.rows) ? s.rows.map(r=>({...r})) : [];
   nextRowId = rows.reduce((m, r)=> Math.max(m, r.id||0), 0) + 1;
-  ceramicMatrix = Array.isArray(s.ceramicMatrix) ? s.ceramicMatrix.map(t => ({...t})) : ceramicMatrix;
-  solarMatrix = Array.isArray(s.solarMatrix) ? s.solarMatrix.map(t => ({...t})) : solarMatrix;
+  ceramicMatrix = Array.isArray(s.ceramicMatrix) ? s.ceramicMatrix.map(t=>({...t})) : ceramicMatrix;
+  solarMatrix = Array.isArray(s.solarMatrix) ? s.solarMatrix.map(t=>({...t})) : solarMatrix;
   renderRows();
 }
 function openCustomersModal(){
-  const modal = $("#customersModal");
-  const list = $("#customersList");
-  const data = getStore();
-  list.innerHTML = '';
-  if(!data.length){
-    list.innerHTML = '<div class="muted">No customers saved yet.</div>';
-  } else {
-    data.forEach((rec, idx)=>{
-      const div = document.createElement('div');
-      div.className = 'card';
+  const modal = $("#customersModal"); const list = $("#customersList"); const search = $("#customerSearch");
+  function render(filterText){
+    const data = getStore(); list.innerHTML = ''; const f = (filterText||'').toLowerCase().trim();
+    const filtered = !f ? data : data.filter(rec => {
+      const hay = [rec.label, rec.firstName, rec.projectName, rec.clientEmail, rec.serviceAddress, rec.jobZip].filter(Boolean).join(' ').toLowerCase();
+      return hay.indexOf(f) !== -1;
+    });
+    if(!filtered.length){ list.innerHTML = '<div class="muted">No matching customers.</div>'; return; }
+    filtered.forEach((rec, idx)=>{
+      const div = document.createElement('div'); div.className = 'card';
       const created = rec.createdAt ? new Date(rec.createdAt).toLocaleString() : '';
-      div.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:start; gap:8px;">
+      div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:start; gap:8px;">
           <div>
             <div><strong>${escapeHtml(rec.label || (rec.firstName || '') + ' — ' + (rec.projectName || ''))}</strong></div>
             <div class="muted small">${escapeHtml(rec.clientEmail || '')} • ${escapeHtml(rec.projectName || '')}</div>
@@ -294,160 +258,63 @@ function openCustomersModal(){
         </div>`;
       list.appendChild(div);
     });
-    list.onclick = (e)=>{
-      const t = e.target; if(!t.dataset || t.dataset.idx===undefined) return;
-      const idx = Number(t.dataset.idx);
-      const data = getStore();
-      if(t.dataset.act==='load'){
-        loadState(data[idx]);
-        alert('Customer loaded.');
-      } else if(t.dataset.act==='delete'){
-        if(confirm('Delete this saved customer from this device?')){
-          data.splice(idx,1); setStore(data); openCustomersModal();
-        }
-      }
-    };
   }
+  render(''); if (search){ search.oninput = ()=> render(search.value); }
+  list.onclick = (e)=>{
+    const t = e.target; if(!t.dataset || t.dataset.idx===undefined) return;
+    const idx = Number(t.dataset.idx); const data = getStore();
+    if(t.dataset.act==='load'){ loadState(data[idx]); alert('Customer loaded.'); }
+    else if(t.dataset.act==='delete'){ if(confirm('Delete this saved customer from this device?')){ data.splice(idx,1); setStore(data); render(search ? search.value : ''); } }
+  };
   $("#closeCustomers").onclick = ()=>{ modal.style.display='none'; };
   modal.style.display = 'flex';
 }
 
-// ---------- Data ----------
-let rows = [
-  { id: 1, area: 'Lobby North', widthIn: 48, heightIn: 72, qty: 2, notes: '' },
-  { id: 2, area: 'Conference A', widthIn: 60, heightIn: 60, qty: 3, notes: '' },
-];
+// Data
+let rows = [ { id: 1, area: 'Lobby North', widthIn: 48, heightIn: 72, qty: 2, notes: '' }, { id: 2, area: 'Conference A', widthIn: 60, heightIn: 60, qty: 3, notes: '' } ];
 let nextRowId = 3;
+const SHOP_MIN_SQFT = 18, SHOP_MIN_LOCAL = 250, SHOP_MIN_REMOTE = 350;
+let ceramicMatrix = [ { min:0, max:49, rate:12.0, label:'$12 (0–49)' }, { min:50, max:99, rate:11.0, label:'$11 (50–99)' }, { min:100, max:199, rate:10.0, label:'$10 (100–199)' }, { min:200, max:299, rate:9.0, label:'$9 (200–299)' }, { min:300, max:399, rate:8.0, label:'$8 (300–399)' }, { min:400, max:499, rate:7.0, label:'$7 (400–499)' }, { min:500, max:Infinity, rate:6.5, label:'$6.50 (500+)' } ];
+let solarMatrix   = [ { min:0, max:99, rate:7.5, label:'$7.50 (0–99)' }, { min:100, max:199, rate:6.5, label:'$6.50 (100–199)' }, { min:200, max:299, rate:6.0, label:'$6.00 (200–299)' }, { min:300, max:399, rate:5.5, label:'$5.50 (300–399)' }, { min:400, max:Infinity, rate:5.0, label:'$5.00 (400+)' } ];
 
-const SHOP_MIN_SQFT = 18;
-const SHOP_MIN_LOCAL = 250;
-const SHOP_MIN_REMOTE = 350;
-
-// matrices (editable)
-let ceramicMatrix = [
-  { min: 0, max: 49, rate: 12.0, label: '$12 (0–49)' },
-  { min: 50, max: 99, rate: 11.0, label: '$11 (50–99)' },
-  { min: 100, max: 199, rate: 10.0, label: '$10 (100–199)' },
-  { min: 200, max: 299, rate: 9.0, label: '$9 (200–299)' },
-  { min: 300, max: 399, rate: 8.0, label: '$8 (300–399)' },
-  { min: 400, max: 499, rate: 7.0, label: '$7 (400–499)' },
-  { min: 500, max: Infinity, rate: 6.5, label: '$6.50 (500+)' },
-];
-let solarMatrix = [
-  { min: 0, max: 99, rate: 7.5, label: '$7.50 (0–99)' },
-  { min: 100, max: 199, rate: 6.5, label: '$6.50 (100–199)' },
-  { min: 200, max: 299, rate: 6.0, label: '$6.00 (200–299)' },
-  { min: 300, max: 399, rate: 5.5, label: '$5.50 (300–399)' },
-  { min: 400, max: Infinity, rate: 5.0, label: '$5.00 (400+)' },
-];
-
-// ---------- Rendering ----------
-function rowSqft(r){ return ((num(r.widthIn) || 0) * (num(r.heightIn) || 0) * (num(r.qty) || 0)) / 144; }
+// Rendering & pricing
+function rowSqft(r){ return ((num(r.widthIn)||0)*(num(r.heightIn)||0)*(num(r.qty)||0))/144; }
 function totalSqft(){ return rows.reduce((a,r)=>a+rowSqft(r),0); }
-
 function renderRows(){
-  const tbody = $("#rows");
-  if(!tbody) return;
-  tbody.innerHTML = "";
-  rows.forEach(r => {
+  const tbody = $("#rows"); if(!tbody) return; tbody.innerHTML = "";
+  rows.forEach(r=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input data-id="${r.id}" data-k="area" type="text" value="${escapeHtml(r.area)}" placeholder="e.g., Lobby North"></td>
+    tr.innerHTML = `<td><input data-id="${r.id}" data-k="area" type="text" value="${escapeHtml(r.area)}" placeholder="e.g., Lobby North"></td>
       <td class="w-24"><input data-id="${r.id}" data-k="widthIn" type="number" value="${r.widthIn}"></td>
       <td class="w-24"><input data-id="${r.id}" data-k="heightIn" type="number" value="${r.heightIn}"></td>
       <td class="w-20"><input data-id="${r.id}" data-k="qty" type="number" value="${r.qty}"></td>
       <td class="w-24 ta-r">${rowSqft(r).toFixed(2)}</td>
       <td><input data-id="${r.id}" data-k="notes" type="text" value="${escapeHtml(r.notes)}" placeholder="optional"></td>
-      <td class="ta-r">
-        <span class="link" data-act="dup" data-id="${r.id}">Duplicate</span>
-        &nbsp;|&nbsp;
-        <span class="link danger" data-act="del" data-id="${r.id}">Delete</span>
-      </td>`;
+      <td class="ta-r"><span class="link" data-act="dup" data-id="${r.id}">Duplicate</span>&nbsp;|&nbsp;<span class="link danger" data-act="del" data-id="${r.id}">Delete</span></td>`;
     tbody.appendChild(tr);
   });
-  // Delegate inputs
-  tbody.oninput = (e)=>{
-    const t = e.target;
-    if(!t.dataset || !t.dataset.id) return;
-    const id = Number(t.dataset.id);
-    const key = t.dataset.k;
-    const row = rows.find(r=>r.id===id);
-    if(!row) return;
-    row[key] = (key==='area' || key==='notes') ? t.value : num(t.value);
-    renderRows();
-  };
-  tbody.onclick = (e)=>{
-    const t = e.target;
-    if(!t.dataset || !t.dataset.act) return;
-    const id = Number(t.dataset.id);
-    if(t.dataset.act==='del'){ rows = rows.filter(r=>r.id!==id); renderRows(); }
-    if(t.dataset.act==='dup'){ const src = rows.find(r=>r.id===id); if(src){ rows.push({...src, id: nextRowId++}); renderRows(); } }
-  };
+  tbody.oninput = (e)=>{ const t=e.target; if(!t.dataset||!t.dataset.id) return; const id=Number(t.dataset.id), key=t.dataset.k; const row=rows.find(r=>r.id===id); if(!row) return; row[key]=(key==='area'||key==='notes')?t.value:num(t.value); renderRows(); };
+  tbody.onclick = (e)=>{ const t=e.target; if(!t.dataset||!t.dataset.act) return; const id=Number(t.dataset.id); if(t.dataset.act==='del'){ rows=rows.filter(r=>r.id!==id); renderRows(); } if(t.dataset.act==='dup'){ const src=rows.find(r=>r.id===id); if(src){ rows.push({...src, id: nextRowId++}); renderRows(); } } };
   updateTotalsAndPricing();
 }
-
-function findBracket(matrix, sqft){ return matrix.find(t=> sqft>=t.min && sqft<=t.max) || matrix[0]; }
+function findBracket(matrix, sqft){ return matrix.find(t=>sqft>=t.min && sqft<=t.max) || matrix[0]; }
 function highestRate(matrix){ return matrix.length ? matrix[0].rate : 0; }
-
 function calcFilm(matrix, sqft, miles){
-  if(sqft>0 && sqft<=SHOP_MIN_SQFT){
-    const price = (num(miles)||0) > 50 ? SHOP_MIN_REMOTE : SHOP_MIN_LOCAL;
-    return { mode:'shop-min', tierLabel:`Shop Minimum (≤${SHOP_MIN_SQFT} sq ft)`, original: price, finalPrice: price, savings:0, tierPct:0 };
-  }
-  const bracket = findBracket(matrix, sqft);
-  const rate = bracket.rate;
-  const original = highestRate(matrix) * sqft;
-  const finalPrice = rate * sqft;
-  const savings = Math.max(0, original - finalPrice);
-  const pct = original>0 ? Math.round((savings/original)*100) : 0;
-  return { mode:'matrix', tierLabel: bracket.label, original, finalPrice, savings, tierPct:pct };
+  if(sqft>0 && sqft<=SHOP_MIN_SQFT){ const price=(num(miles)||0)>50?SHOP_MIN_REMOTE:SHOP_MIN_LOCAL; return { mode:'shop-min', tierLabel:`Shop Minimum (≤${SHOP_MIN_SQFT} sq ft)`, original:price, finalPrice:price, savings:0, tierPct:0 }; }
+  const bracket=findBracket(matrix, sqft); const rate=bracket.rate; const original=highestRate(matrix)*sqft; const finalPrice=rate*sqft; const savings=Math.max(0, original-finalPrice); const pct=original>0?Math.round((savings/original)*100):0; return { mode:'matrix', tierLabel:bracket.label, original, finalPrice, savings, tierPct:pct };
 }
-
 function updateTotalsAndPricing(){
-  const sqft = totalSqft();
-  const totalEl = $("#totalSqft");
-  if (totalEl) totalEl.textContent = sqft.toFixed(2);
-  const milesEl = $("#miles");
-  const milesVal = milesEl ? num(milesEl.value,0) : 0;
-  const milesEcho = $("#milesEcho");
-  if (milesEcho) milesEcho.textContent = milesVal;
-
-  const cer = calcFilm(ceramicMatrix, sqft, milesVal);
-  const sol = calcFilm(solarMatrix, sqft, milesVal);
-
-  const map = [
-    ["cerOrig", money(cer.original)],
-    ["cerTier", cer.tierLabel],
-    ["cerDisc", `${cer.tierPct}%`],
-    ["cerFinal", money(cer.finalPrice)],
-    ["cerSave", money(cer.savings)],
-    ["solOrig", money(sol.original)],
-    ["solTier", sol.tierLabel],
-    ["solDisc", `${sol.tierPct}%`],
-    ["solFinal", money(sol.finalPrice)],
-    ["solSave", money(sol.savings)],
-  ];
-  map.forEach(([id, val])=>{ const el = document.getElementById(id); if(el) el.textContent = val; });
+  const sqft=totalSqft(); const totalEl=$("#totalSqft"); if(totalEl) totalEl.textContent=sqft.toFixed(2);
+  const milesEl=$("#miles"); const milesVal=milesEl?num(milesEl.value,0):0; const milesEcho=$("#milesEcho"); if(milesEcho) milesEcho.textContent=milesVal;
+  const cer=calcFilm(ceramicMatrix, sqft, milesVal); const sol=calcFilm(solarMatrix, sqft, milesVal);
+  [["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",`${cer.tierPct}%`],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
+   ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",`${sol.tierPct}%`],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]].forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.textContent=val; });
 }
-
 function buildEmailHtml(){
-  const projectName = ($("#projectName")?.value || "").trim();
-  const firstName = ($("#firstName")?.value || "").trim();
-  const serviceAddress = ($("#serviceAddress")?.value || "").trim();
-  const sqft = totalSqft();
-  const miles = $("#miles") ? num($("#miles").value,0) : 0;
-
-  const cer = calcFilm(ceramicMatrix, sqft, miles);
-  const sol = calcFilm(solarMatrix, sqft, miles);
-
-  const cerLine = cer.mode==='shop-min' ?
-    `- <strong>Tier:</strong> ${escapeHtml(cer.tierLabel)}` :
-    `- <strong>Discount tier applied:</strong> ${escapeHtml(cer.tierLabel)} (${cer.tierPct}%)`;
-
-  const solLine = sol.mode==='shop-min' ?
-    `- <strong>Tier:</strong> ${escapeHtml(sol.tierLabel)}` :
-    `- <strong>Discount tier applied:</strong> ${escapeHtml(sol.tierLabel)} (${sol.tierPct}%)`;
-
+  const projectName=($("#projectName")?.value||"").trim(); const firstName=($("#firstName")?.value||"").trim(); const serviceAddress=($("#serviceAddress")?.value||"").trim();
+  const sqft=totalSqft(); const miles=$("#miles")?num($("#miles").value,0):0; const cer=calcFilm(ceramicMatrix, sqft, miles); const sol=calcFilm(solarMatrix, sqft, miles);
+  const cerLine=cer.mode==='shop-min'?`- <strong>Tier:</strong> ${escapeHtml(cer.tierLabel)}`:`- <strong>Discount tier applied:</strong> ${escapeHtml(cer.tierLabel)} (${cer.tierPct}%)`;
+  const solLine=sol.mode==='shop-min'?`- <strong>Tier:</strong> ${escapeHtml(sol.tierLabel)}`:`- <strong>Discount tier applied:</strong> ${escapeHtml(sol.tierLabel)} (${sol.tierPct}%)`;
   return `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; color:#333; line-height:1.6; max-width:700px;">
     <p><strong>Subject:</strong> Your Window Film Proposal — ${escapeHtml(projectName)}</p>
     <p>${escapeHtml(firstName)},</p>
@@ -455,89 +322,69 @@ function buildEmailHtml(){
     <p><strong>Total Glass Area</strong><br>- <strong>${sqft.toFixed(2)} sq ft</strong></p>
 
     <div style="background:#f8f8f8; padding:16px; border-left:4px solid #0d6efd; margin:20px 0;">
-      <h2>🌟 Option A — Premium Ceramic Window Film (TSER 69%+)</h2>
+      <h2 style="margin:0 0 6px 0;">🌟 Option A — Premium Ceramic Window Film (TSER 69%+)</h2>
       <em>Our most advanced and most popular choice, combining performance and long-term value.</em>
-      <p>Engineered to materially reduce solar heat gain and glare while maintaining optical clarity. This film delivers a <strong>Total Solar Energy Rejection of 69%+</strong>, helps stabilize interior temperatures, supports HVAC efficiency, and <strong>enhances the glass to elevate the exterior aesthetic.</strong></p>
-      <p>- <strong>Original price:</strong> ${money(cer.original)}<br>
+      <p style="margin:10px 0 10px 0;">Engineered to materially reduce solar heat gain and glare while maintaining optical clarity. This film delivers a <strong>Total Solar Energy Rejection of 69%+</strong>, helps stabilize interior temperatures, supports HVAC efficiency, and <strong>enhances the glass to elevate the exterior aesthetic.</strong></p>
+      <p style="margin:8px 0 0 0;">- <strong>Original price:</strong> ${money(cer.original)}<br>
          ${cerLine}<br>
          - <strong>Your price:</strong> <strong>${money(cer.finalPrice)}</strong><br>
          - <strong>You save:</strong> ${money(cer.savings)}</p>
-      <p><strong>Warranty</strong><br>
+      <p style="margin:14px 0 0 0;"><strong>Warranty</strong><br>
          - Residential: Lifetime warranty on film and workmanship<br>
          - Commercial: 12-year warranty on film and workmanship</p>
     </div>
 
     <div style="background:#f8f8f8; padding:16px; border-left:4px solid #444; margin:20px 0;">
-      <h2>Option B — Solar Control Film (Budget-Friendly)</h2>
-      <p>A cost-optimized solution that reduces heat and glare compared to untreated glass, offering a clean, neutral appearance. While designed for value, it is still installed to the same professional standards, ensuring durability and customer satisfaction.</p>
-      <p>- <strong>Original price:</strong> ${money(sol.original)}<br>
+      <h2 style="margin:0 0 6px 0;">Option B — Solar Control Film (Budget-Friendly)</h2>
+      <p style="margin:0 0 10px 0;">A cost-optimized solution that reduces heat and glare compared to untreated glass, offering a clean, neutral appearance. While designed for value, it is still installed to the same professional standards, ensuring durability and customer satisfaction.</p>
+      <p style="margin:8px 0 0 0;">- <strong>Original price:</strong> ${money(sol.original)}<br>
          ${solLine}<br>
          - <strong>Your price:</strong> <strong>${money(sol.finalPrice)}</strong><br>
          - <strong>You save:</strong> ${money(sol.savings)}</p>
-      <p><strong>Warranty</strong><br>
+      <p style="margin:14px 0 0 0;"><strong>Warranty</strong><br>
          This film comes with <strong>limited coverage supported by our professional installation team</strong>, giving you added peace of mind knowing that you’re in good hands.</p>
     </div>
 
-    <h2>Why Choose Us</h2>
+    <h2 style="margin:16px 0 6px 0;">Why Choose Us</h2>
     <p>We are <strong>Veteran owned and operated</strong> and consistently recognized as a <strong>5-star rated provider</strong>, trusted by homeowners and businesses alike. Our team is committed to delivering a seamless experience and results that elevate comfort, performance, and aesthetic appeal.</p>
     <p>Best regards,</p>
   </body></html>`;
 }
 
-// ---------- Settings editor ----------
+// Settings editor
 function renderMatrixEditor(container, matrix, onChange){
-  container.innerHTML = '';
-  matrix.forEach((t, i) => {
-    const row = document.createElement('div');
-    row.style.display = 'grid';
-    row.style.gridTemplateColumns = 'repeat(12, 1fr)';
-    row.style.gap = '8px';
-    row.style.alignItems = 'end';
-    row.style.marginBottom = '8px';
-    row.innerHTML = `
-      <label class="block" style="grid-column: span 3;"><span class="label">Min sq ft</span><input data-i="${i}" data-k="min" type="number" value="${t.min}"></label>
+  container.innerHTML = ''; matrix.forEach((t,i)=>{
+    const row = document.createElement('div'); row.style.display='grid'; row.style.gridTemplateColumns='repeat(12, 1fr)'; row.style.gap='8px'; row.style.alignItems='end'; row.style.marginBottom='8px';
+    row.innerHTML = `<label class="block" style="grid-column: span 3;"><span class="label">Min sq ft</span><input data-i="${i}" data-k="min" type="number" value="${t.min}"></label>
       <label class="block" style="grid-column: span 3;"><span class="label">Max sq ft</span><input data-i="${i}" data-k="max" type="text" value="${t.max===Infinity?'Infinity':t.max}"></label>
       <label class="block" style="grid-column: span 3;"><span class="label">Rate $/sq ft</span><input data-i="${i}" data-k="rate" type="number" step="0.01" value="${t.rate}"></label>
       <label class="block" style="grid-column: span 3;"><span class="label">Tier label</span><input data-i="${i}" data-k="label" type="text" value="${escapeHtml(t.label)}"></label>
       <div style="grid-column: 12 / span 1; justify-self: end;"><span class="link danger" data-i="${i}" data-act="remove">Remove</span></div>`;
     container.appendChild(row);
   });
-  container.oninput = (e)=>{
-    const t = e.target; const i = Number(t.dataset.i); const k = t.dataset.k; if(isNaN(i) || !k) return;
-    const patch = {};
-    if(k==='max'){ patch[k] = t.value==='Infinity' ? Infinity : num(t.value); }
-    else if(k==='label'){ patch[k] = t.value; }
-    else { patch[k] = num(t.value); }
-    matrix[i] = { ...matrix[i], ...patch };
-    onChange(matrix);
+  container.oninput=(e)=>{ const t=e.target; const i=Number(t.dataset.i); const k=t.dataset.k; if(isNaN(i)||!k) return;
+    const patch={}; if(k==='max'){ patch[k]=t.value==='Infinity'?Infinity:num(t.value);} else if(k==='label'){patch[k]=t.value;} else {patch[k]=num(t.value);} matrix[i]={...matrix[i],...patch}; onChange(matrix);
   };
-  container.onclick = (e)=>{
-    const t = e.target; if(t.dataset.act!=='remove') return;
-    const i = Number(t.dataset.i); matrix.splice(i,1); onChange(matrix);
-  };
+  container.onclick=(e)=>{ const t=e.target; if(t.dataset.act!=='remove') return; const i=Number(t.dataset.i); matrix.splice(i,1); onChange(matrix); };
 }
-
 function openSettings(){
-  const modal = $("#settingsModal");
-  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
-  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix = [...m]; updateTotalsAndPricing(); openSettings(); });
-  $("#addCerTier").onclick = ()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
-  $("#addSolTier").onclick = ()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
-  $("#btnCloseSettings").onclick = ()=>{ modal.style.display='none'; };
-  modal.style.display = 'flex';
+  const modal=$("#settingsModal");
+  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix=[...m]; updateTotalsAndPricing(); openSettings(); });
+  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix=[...m]; updateTotalsAndPricing(); openSettings(); });
+  $("#addCerTier").onclick=()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
+  $("#addSolTier").onclick=()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
+  $("#btnCloseSettings").onclick=()=>{ modal.style.display='none'; };
+  modal.style.display='flex';
 }
 
-// ---------- Email modal ----------
+// Email modal
 function openEmail(){
   const html = buildEmailHtml();
-  $("#subjectEcho").textContent = $("#projectName").value.trim();
-  const frame = $("#emailFrame");
-  if ('srcdoc' in frame) { frame.srcdoc = html; }
-  else { frame.setAttribute('src', 'data:text/html;charset=utf-8,' + encodeURIComponent(html)); }
-  $("#emailModal").style.display = 'flex';
+  $("#subjectEcho").textContent = ($("#projectName")?.value || "").trim();
+  const frame=$("#emailFrame");
+  if ('srcdoc' in frame) { frame.srcdoc = html; } else { frame.setAttribute('src','data:text/html;charset=utf-8,'+encodeURIComponent(html)); }
+  $("#emailModal").style.display='flex';
 }
-
-// Outlook compose deeplink (+ mailto fallback)
 function openOutlookCompose(){
   const to = ($("#clientEmail")?.value || '').trim();
   const subject = `Your Window Film Proposal — ${($("#projectName")?.value || '').trim()}`;
@@ -546,75 +393,27 @@ function openOutlookCompose(){
   const enc = encodeURIComponent;
   const outlook = `ms-outlook://compose?to=${enc(to)}&subject=${enc(subject)}&body=${enc(body)}`;
   const mailto = `mailto:${enc(to)}?subject=${enc(subject)}&body=${enc(body)}`;
-  window.location.href = outlook;
-  setTimeout(()=>{ window.location.href = mailto; }, 700);
+  window.location.href = outlook; setTimeout(()=>{ window.location.href = mailto; }, 700);
 }
 
-// ---------- DOMContentLoaded bindings ----------
-document.addEventListener('DOMContentLoaded', () => {
-  const bind = (id, fn) => {
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.addEventListener('click', fn, false);
-    el.addEventListener('touchend', (e)=>{ e.preventDefault(); fn(e); }, false);
-  };
+// Bindings
+document.addEventListener('DOMContentLoaded', ()=>{
+  const bind=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; el.addEventListener('click',fn,false); el.addEventListener('touchend',(e)=>{e.preventDefault(); fn(e);}, false); };
   bind('btnAddRow', ()=>{ rows.push({ id: nextRowId++, area:'', widthIn:0, heightIn:0, qty:1, notes:'' }); renderRows(); });
   bind('btnSettings', openSettings);
   bind('btnEmail', openEmail);
-  bind('btnEmail2', openEmail);
-  bind('btnCopy', ()=>{
-    const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
-    const text = div.innerText;
-    navigator.clipboard.writeText(text).then(()=> alert('Email (plain text) copied.')).catch(()=> alert('Clipboard not available. Open preview to copy.'));
-  });
+  bind('btnCopy', ()=>{ const div=document.createElement('div'); div.innerHTML=buildEmailHtml(); const text=div.innerText; navigator.clipboard.writeText(text).then(()=>alert('Email (plain text) copied.')).catch(()=>alert('Clipboard not available. Open preview to copy.')); });
   bind('btnOutlook', openOutlookCompose);
-  bind('btnSaveCustomer', ()=>{
-    const state = serializeState();
-    const suggested = (state.firstName||'Customer') + ' — ' + (state.projectName||'Project');
-    const label = prompt('Save as:', suggested);
-    if(label===null) return;
-    const rec = { ...state, label, createdAt: Date.now() };
-    const data = getStore(); data.unshift(rec); setStore(data);
-    alert('Saved to this device.');
-  });
+  bind('btnSaveCustomer', ()=>{ const state=serializeState(); const suggested=(state.firstName||'Customer')+' — '+(state.projectName||'Project'); const label=prompt('Save as:', suggested); if(label===null) return; const rec={...state,label,createdAt:Date.now()}; const data=getStore(); data.unshift(rec); setStore(data); alert('Saved to this device.'); });
   bind('btnCustomers', openCustomersModal);
-  const milesEl = document.getElementById('miles');
-  if (milesEl){
-    milesEl.addEventListener('input', updateTotalsAndPricing);
-    milesEl.addEventListener('change', updateTotalsAndPricing);
-  }
-  const autoBtn = document.getElementById('btnAutoMiles');
-  if (autoBtn){
-    autoBtn.addEventListener('click', async ()=>{
-      const btn = document.getElementById('btnAutoMiles');
-      const jobZip = document.getElementById('jobZip').value.trim();
-      if(!/^\\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; }
-      btn.disabled = true; const oldText = btn.textContent; btn.textContent = 'Calculating…';
-      try {
-        const [shop, job] = await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]);
-        const miles = haversineMiles(shop, job);
-        const rounded = Math.round(miles);
-        document.getElementById('miles').value = String(rounded);
-        updateTotalsAndPricing();
-      } catch(e){
-        alert('Could not resolve ZIP distance. You can enter miles manually.');
-      } finally {
-        btn.disabled = false; btn.textContent = oldText;
-      }
-    }, false);
-    autoBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); autoBtn.click(); }, false);
-  }
-  // First render
+  const milesEl=document.getElementById('miles'); if(milesEl){ milesEl.addEventListener('input', updateTotalsAndPricing); milesEl.addEventListener('change', updateTotalsAndPricing); }
+  const autoBtn=document.getElementById('btnAutoMiles'); if(autoBtn){ autoBtn.addEventListener('click', async ()=>{ const btn=document.getElementById('btnAutoMiles'); const jobZip=document.getElementById('jobZip').value.trim(); if(!/^\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; } btn.disabled=true; const oldText=btn.textContent; btn.textContent='Calculating…'; try{ const [shop,job]=await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]); const miles=haversineMiles(shop,job); const rounded=Math.round(miles); document.getElementById('miles').value=String(rounded); updateTotalsAndPricing(); }catch(e){ alert('Could not resolve ZIP distance. You can enter miles manually.'); } finally{ btn.disabled=false; btn.textContent=oldText; } }, false); autoBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); autoBtn.click(); }, false); }
   renderRows();
 });
 
-// PWA registration (OFF by default to prevent cache conflicts during setup)
-const ENABLE_OFFLINE = false;
-if (ENABLE_OFFLINE && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js', { scope: './' });
-  });
-}
+// SW disabled by default
+const ENABLE_OFFLINE=false;
+if (ENABLE_OFFLINE && 'serviceWorker' in navigator) { window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js', { scope: './' }); }); }
 </script>
 </body>
 </html>
