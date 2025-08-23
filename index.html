@@ -8,7 +8,7 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
   <title>Dynamic Tintz — Quote Builder (PWA)</title>
-  <script src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script>
+  
   <style>
     :root { --bg: #f1f5f9; --card:#fff; --ink:#0f172a; --muted:#475569; --accent:#2563eb; --ring:#93c5fd; --radius: 16px; }
     * { box-sizing: border-box; }
@@ -47,6 +47,15 @@
     .small { font-size: 12px; }
     .toast { position: fixed; bottom: 16px; right: 16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:12px; opacity:0.95; }
   </style>
+
+  <script>
+    (function(){
+      function toast(msg){ try{ const t=document.createElement('div'); t.style.position='fixed'; t.style.bottom='16px'; t.style.right='16px'; t.style.background='#0f172a'; t.style.color='#fff'; t.style.padding='10px 14px'; t.style.borderRadius='12px'; t.style.zIndex='99999'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 4000); }catch(e){} }
+      window.addEventListener('error', function(e){ toast('JS error: ' + (e.message||'unknown')); });
+      window.addEventListener('unhandledrejection', function(e){ toast('Promise error: ' + (e.reason && e.reason.message ? e.reason.message : 'unknown')); });
+      window.TZ_TOAST = toast;
+    })();
+  </script>
 </head>
 <body>
   <div class="wrap">
@@ -59,8 +68,7 @@
         <button class="btn" id="btnSettings">Settings</button>
         <button class="btn" id="btnSaveCustomer">Save Customer</button>
         <button class="btn" id="btnCustomers">Customers</button>
-        <button class="btn primary" id="btnEmail">Generate & Send</button>
-        <button class="btn" id="btnOutlook">Open in Outlook</button>
+        <button class="btn primary" id="btnEmail">Generate Email</button>
       </div>
     </header>
 
@@ -130,7 +138,7 @@
       </div>
     </section>
 
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.2</div>
   </div>
 
   <!-- Customers Modal -->
@@ -156,18 +164,7 @@
         <button class="btn" id="btnCloseSettings">Close</button>
       </header>
       <div class="body" style="padding: 12px 16px;">
-        <h4>Email Sending (Microsoft 365)</h4>
-        <div class="grid two" style="margin-bottom:8px;">
-          <label class="block"><span class="label">Microsoft App Client ID</span><input id="msClientId" type="text" placeholder="Paste your Azure App (Application) ID"></label>
-          <label class="block"><span class="label">Status</span><input id="msStatus" type="text" value="Not connected" disabled></label>
-        </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
-          <button class="btn" id="btnMsSave">Save Config</button>
-          <button class="btn" id="btnMsLogin">Sign In with Microsoft</button>
-          <button class="btn" id="btnMsLogout">Sign Out</button>
-          <button class="btn" id="btnTestSend">Test Send (to me)</button>
-        </div>
-        <div class="muted small" style="margin-bottom:16px;">Uses Microsoft Graph → <code>Mail.Send</code> with delegated permission. Your credentials never leave Microsoft; tokens are cached locally.</div>
+        
 
         <p class="muted">Update pricing matrices without code changes.</p>
         <div style="display:flex; gap:8px; margin-bottom:8px;">
@@ -212,13 +209,13 @@ function haversineMiles(a, b){
 // Storage
 const STORE_KEY = 'tintz.customers.v1';
 const MATRIX_STORE_KEY = 'tintz.matrices.v1';
-const MS_STORE_KEY = 'tintz.msconf.v1';
+
 function getStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ return []; } }
 function setStore(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
 function getMatrices(){ try { return JSON.parse(localStorage.getItem(MATRIX_STORE_KEY) || 'null'); } catch(e){ return null; } }
 function setMatrices(obj){ localStorage.setItem(MATRIX_STORE_KEY, JSON.stringify(obj)); }
-function getMsConf(){ try { return JSON.parse(localStorage.getItem(MS_STORE_KEY) || 'null'); } catch(e){ return null; } }
-function setMsConf(conf){ localStorage.setItem(MS_STORE_KEY, JSON.stringify(conf)); }
+
+
 
 // Data
 let rows = [ { id: 1, area: 'Lobby North', widthIn: 48, heightIn: 72, qty: 2, notes: '' }, { id: 2, area: 'Conference A', widthIn: 60, heightIn: 60, qty: 3, notes: '' } ];
@@ -346,9 +343,6 @@ function openSettings(){
     }catch(e){ setStatus('MSAL init error'); }
   }
   msInit();
-  const bSave = document.getElementById('btnMsSave'); if(bSave){ bSave.onclick = ()=>{ const updated = { clientId: document.getElementById('msClientId').value.trim(), redirectUri: window.location.origin + window.location.pathname }; setMsConf(updated); alert('Saved.'); location.reload(); }; }
-  const bLogin = document.getElementById('btnMsLogin'); if(bLogin){ bLogin.onclick = ()=>{ if(!msalApp){ alert('Save Client ID first.'); return; } msalApp.loginRedirect({ scopes: ['User.Read','Mail.Send'] }); }; }
-  const bLogout = document.getElementById('btnMsLogout'); if(bLogout){ bLogout.onclick = ()=>{ if(!msalApp || !msAccount){ alert('Not signed in.'); return; } msalApp.logoutRedirect({ account: msAccount }); }; }
   const bTest = document.getElementById('btnTestSend'); if(bTest){ bTest.onclick = async ()=>{
       if(!msalApp){ alert('Save Client ID first.'); return; }
       const a = msalApp.getAllAccounts(); if(!a.length){ alert('Sign in first.'); return; }
@@ -378,10 +372,10 @@ function openOutlookCompose(){
 
 // Bindings
 document.addEventListener('DOMContentLoaded', ()=>{
-  const bind=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; el.addEventListener('click',fn,false); el.addEventListener('touchend',(e)=>{e.preventDefault(); fn(e);}, false); };
+  const bind=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; el.addEventListener('click', fn, false); };
   bind('btnAddRow', ()=>{ rows.push({ id: nextRowId++, area:'', widthIn:0, heightIn:0, qty:1, notes:'' }); renderRows(); });
   bind('btnSettings', openSettings);
-  bind('btnOutlook', openOutlookCompose);
+
   bind('btnSaveCustomer', ()=>{ const state={ firstName: $("#firstName")?.value || "", clientEmail: $("#clientEmail")?.value || "", clientPhone: $("#clientPhone")?.value || "", serviceAddress: $("#serviceAddress")?.value || "", projectName: $("#projectName")?.value || "", jobZip: $("#jobZip")?.value || "", miles: $("#miles")?.value || "0", rows: rows, ceramicMatrix: ceramicMatrix, solarMatrix: solarMatrix }; const suggested=(state.firstName||'Customer')+' — '+(state.projectName||'Project'); const label=prompt('Save as:', suggested); if(label===null) return; const rec={...state,label,createdAt:Date.now()}; const data=getStore(); data.unshift(rec); setStore(data); toast('Saved to this device.'); });
   bind('btnCustomers', ()=>{
     const modal = $("#customersModal"); const list = $("#customersList"); const search = $("#customerSearch");
@@ -393,8 +387,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   const milesEl=document.getElementById('miles'); if(milesEl){ milesEl.addEventListener('input', updateTotalsAndPricing); milesEl.addEventListener('change', updateTotalsAndPricing); }
   const autoBtn=document.getElementById('btnAutoMiles'); if(autoBtn){ autoBtn.addEventListener('click', async ()=>{ const btn=document.getElementById('btnAutoMiles'); const jobZip=document.getElementById('jobZip').value.trim(); if(!/^\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; } btn.disabled=true; const oldText=btn.textContent; btn.textContent='Calculating…'; try{ const [shop,job]=await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]); const miles=haversineMiles(shop,job); const rounded=Math.round(miles); document.getElementById('miles').value=String(rounded); updateTotalsAndPricing(); }catch(e){ alert('Could not resolve ZIP distance. You can enter miles manually.'); } finally{ btn.disabled=false; btn.textContent=oldText; } }, false); autoBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); autoBtn.click(); }, false); }
-  bind('btnEmail', async ()=>{
-    const to = ($("#clientEmail")?.value || '').trim();
+  bind('btnEmail', openOutlookCompose);
     if(!to){ alert('Enter a Client Email first.'); return; }
     const subject = `Your Window Film Proposal — ${($("#projectName")?.value || '').trim()}`;
     const html = buildEmailHtml();
