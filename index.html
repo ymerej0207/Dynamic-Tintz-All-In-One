@@ -11,27 +11,26 @@
   <style>
     :root { --bg: #f1f5f9; --card:#fff; --ink:#0f172a; --muted:#475569; --accent:#2563eb; --ring:#93c5fd; --radius: 16px; }
     * { box-sizing: border-box; }
-    body { margin:0; font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color: var(--ink); background: var(--bg); }
+    body { margin:0; font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color: var(--ink); background: var(--bg); }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
     h1 { font-size: 28px; margin: 0 0 4px; }
     .sub { color: var(--muted); font-size: 14px; margin: 0; }
     header { display: flex; gap: 12px; flex-direction: column; }
     @media (min-width: 640px) { header { flex-direction: row; align-items: center; justify-content: space-between; } }
-    .btn { border:1px solid #e2e8f0; background:#fff; padding:10px 14px; border-radius: 16px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); font-size:14px; cursor:pointer; }
+    .btn { border:1px solid #e2e8f0; background:#fff; padding:12px 16px; border-radius: 16px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); font-size:15px; cursor:pointer; }
     .btn.primary { background: var(--accent); color:#fff; border-color: var(--accent); }
     .btn.primary:hover { filter: brightness(0.95); }
     .btn:hover { box-shadow: 0 2px 6px rgb(0 0 0 / 0.08); }
     .grid { display:grid; gap:12px; }
-    @media (min-width: 640px){ .grid.two { grid-template-columns: repeat(2, 1fr);} }
-    @media (min-width: 1024px){ .grid.three { grid-template-columns: repeat(3, 1fr);} }
+    @media (min-width: 640px){ .grid.three { grid-template-columns: repeat(3, 1fr);} }
     label.block { display:block; }
     .label { font-size:12px; color: var(--muted); }
-    input[type=text], input[type=number], input[type=email] { width: 100%; padding: 10px 12px; border-radius: 14px; border:1px solid #cbd5e1; background:#fff; margin-top:6px; font-size: 16px; }
+    input[type=text], input[type=number], input[type=email] { width: 100%; padding: 14px 14px; border-radius: 16px; border:1px solid #cbd5e1; background:#fff; margin-top:8px; font-size: 18px; }
     .card { background: var(--card); border:1px solid #e2e8f0; border-radius: var(--radius); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); padding: 16px; }
-    table { width:100%; border-collapse: collapse; font-size:14px; }
-    thead th { text-align:left; font-weight:600; color: var(--muted); background:#f1f5f9; padding:10px 8px; white-space: nowrap; }
-    td { border-top:1px solid #e2e8f0; padding:8px; vertical-align: top; }
-    .w-20 { width: 5rem; } .w-24 { width: 6rem; } .ta-r { text-align:right; }
+    table { width:100%; border-collapse: collapse; font-size:15px; }
+    thead th { text-align:left; font-weight:600; color: var(--muted); background:#f1f5f9; padding:12px 10px; white-space: nowrap; position: sticky; top: 0; }
+    td { border-top:1px solid #e2e8f0; padding:12px; vertical-align: top; }
+    .w-20 { width: 6rem; } .w-24 { width: 7rem; } .ta-r { text-align:right; }
     .muted { color: var(--muted); font-size: 12px; }
     .cards { display:grid; gap:12px; } @media (min-width: 1024px){ .cards { grid-template-columns: repeat(3, 1fr);} }
     .ring { outline: 2px solid #93c5fd; } .row { display:flex; align-items:center; justify-content: space-between; padding:6px 0; }
@@ -44,11 +43,12 @@
     .row-inline { display:flex; gap:8px; align-items:end; flex-wrap: wrap; }
     .small { font-size: 12px; }
     .toast { position: fixed; bottom: 16px; right: 16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:12px; opacity:0.95; z-index: 99999; }
+    .tbl-input { padding: 14px 12px; font-size: 18px; height: 48px; }
   </style>
   <script>
     // Minimal on-device diagnostics
     (function(){
-      function toast(msg){ try{ var t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 4000); }catch(e){} }
+      function toast(msg){ try{ var t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 3000); }catch(e){} }
       window.addEventListener('error', function(e){ toast('JS error: ' + (e.message || 'unknown')); });
       window.addEventListener('unhandledrejection', function(e){ var m='Promise error'; try{ m = e.reason && (e.reason.message || String(e.reason)); }catch(_){} toast(m); });
       window.TZ_TOAST = toast;
@@ -77,8 +77,8 @@
       <label class="block" style="grid-column: span 2;"><span class="label">Service Address</span><input id="serviceAddress" type="text" value="123 Commerce Dr, Dallas, TX" placeholder="Street, City, ST"></label>
       <label class="block"><span class="label">Project / Property Name</span><input id="projectName" type="text" value="Fast-Trak HQ" placeholder="e.g., Corporate HQ"></label>
       <div class="row-inline">
-        <label class="block" style="min-width: 160px;"><span class="label">Job ZIP Code</span><input id="jobZip" type="text" value="" placeholder="e.g., 75001"></label>
-        <label class="block" style="min-width: 160px;"><span class="label">Miles from 75409</span><input id="miles" type="number" value="12" placeholder="e.g., 42"></label>
+        <label class="block" style="min-width: 160px;"><span class="label">Job ZIP Code</span><input id="jobZip" type="text" inputmode="numeric" pattern="[0-9]*" value="" placeholder="e.g., 75001"></label>
+        <label class="block" style="min-width: 160px;"><span class="label">Miles from 75409</span><input id="miles" type="text" inputmode="numeric" pattern="[0-9]*" value="12" placeholder="e.g., 42"></label>
         <button class="btn" id="btnAutoMiles" title="Calculate by ZIP">Auto-calc distance</button>
       </div>
       <div class="small muted">Auto-calc uses public ZIP geolocation (Zippopotam.us) and Haversine distance. Manual override always allowed.</div>
@@ -136,7 +136,7 @@
       </div>
     </section>
 
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.3</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.4</div>
   </div>
 
   <!-- Customers Modal -->
@@ -183,9 +183,8 @@
 var $ = function(sel){ return document.querySelector(sel); };
 var $$ = function(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); };
 function money(n){ return isNaN(n) ? "$0.00" : "$" + n.toFixed(2); }
-function num(v, fb){ fb = fb===undefined ? 0 : fb; var n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? fb : n; }
+function num(v, fb){ fb = fb===undefined ? 0 : fb; var n = parseFloat(String(v).replace(/[^0-9.\\-]/g,'')); return isNaN(n) ? fb : n; }
 function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
 function toast(msg){ if(window.TZ_TOAST){ window.TZ_TOAST(msg); } }
 
 async function zipToLatLng(zip){
@@ -221,26 +220,9 @@ var solarMatrix   = [ { min:0, max:99, rate:7.5, label:"$7.50 (0–99)" }, { min
 // seed matrices if absent
 (function(){ var saved = getMatrices(); if(saved && saved.ceramic && saved.solar){ ceramicMatrix = saved.ceramic; solarMatrix = saved.solar; } else { setMatrices({ ceramic: ceramicMatrix, solar: solarMatrix }); } })();
 
-// Rendering & pricing
+// Rendering & pricing helpers
 function rowSqft(r){ return ((num(r.widthIn)||0)*(num(r.heightIn)||0)*(num(r.qty)||0))/144; }
 function totalSqft(){ return rows.reduce(function(a,r){ return a+rowSqft(r); },0); }
-function renderRows(){
-  var tbody = $("#rows"); if(!tbody) return; tbody.innerHTML = "";
-  rows.forEach(function(r){
-    var tr = document.createElement("tr");
-    tr.innerHTML = `<td><input data-id="${r.id}" data-k="area" type="text" value="${escapeHtml(r.area)}" placeholder="e.g., Lobby North"></td>
-      <td class="w-24"><input data-id="${r.id}" data-k="widthIn" type="number" value="${r.widthIn}"></td>
-      <td class="w-24"><input data-id="${r.id}" data-k="heightIn" type="number" value="${r.heightIn}"></td>
-      <td class="w-20"><input data-id="${r.id}" data-k="qty" type="number" value="${r.qty}"></td>
-      <td class="w-24 ta-r">${rowSqft(r).toFixed(2)}</td>
-      <td><input data-id="${r.id}" data-k="notes" type="text" value="${escapeHtml(r.notes)}" placeholder="optional"></td>
-      <td class="ta-r"><span class="link" data-act="dup" data-id="${r.id}">Duplicate</span> | <span class="link danger" data-act="del" data-id="${r.id}">Delete</span></td>`;
-    tbody.appendChild(tr);
-  });
-  tbody.oninput = function(e){ var t=e.target; if(!t.dataset||!t.dataset.id) return; var id=Number(t.dataset.id), key=t.dataset.k; var row=rows.find(function(x){ return x.id===id; }); if(!row) return; row[key]=(key==="area"||key==="notes")?t.value:num(t.value); renderRows(); };
-  tbody.onclick = function(e){ var t=e.target; if(!t.dataset||!t.dataset.act) return; var id=Number(t.dataset.id); if(t.dataset.act==="del"){ rows=rows.filter(function(x){ return x.id!==id; }); renderRows(); } if(t.dataset.act==="dup"){ var src=rows.find(function(x){ return x.id===id; }); if(src){ rows.push(Object.assign({}, src, { id: nextRowId++ })); renderRows(); } } };
-  updateTotalsAndPricing();
-}
 function findBracket(matrix, sqft){ return matrix.find(function(t){ return sqft>=t.min && sqft<=t.max; }) || matrix[0]; }
 function highestRate(matrix){ return matrix.length ? matrix[0].rate : 0; }
 function calcFilm(matrix, sqft, miles){
@@ -258,66 +240,120 @@ function calcFilm(matrix, sqft, miles){
 }
 function updateTotalsAndPricing(){
   var sqft=totalSqft(); var totalEl=$("#totalSqft"); if(totalEl) totalEl.textContent=sqft.toFixed(2);
-  var milesEl=$("#miles"); var milesVal=milesEl?num(milesEl.value,0):0; var milesEcho=$("#milesEcho"); if(milesEcho) milesEcho.textContent=milesVal;
+  var milesEl=$("#miles"); var milesVal=milesEl?parseInt((milesEl.value||"").replace(/\\D+/g,''),10)||0:0; var milesEcho=$("#milesEcho"); if(milesEcho) milesEcho.textContent=milesVal;
   var cer=calcFilm(ceramicMatrix, sqft, milesVal); var sol=calcFilm(solarMatrix, sqft, milesVal);
   [["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",cer.tierPct+"%"],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
    ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",sol.tierPct+"%"],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]].forEach(function(pair){ var id=pair[0], val=pair[1]; var el=document.getElementById(id); if(el) el.textContent=val; });
 }
+
+// Render table once; incremental updates afterward
+function renderRows(){
+  var tbody = $("#rows"); if(!tbody) return; tbody.innerHTML = "";
+  rows.forEach(function(r){
+    var tr = document.createElement("tr");
+    tr.innerHTML = `<td><input class="tbl-input" data-id="${r.id}" data-k="area" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" value="${escapeHtml(r.area)}" placeholder="e.g., Lobby North"></td>
+      <td class="w-24"><input class="tbl-input" data-id="${r.id}" data-k="widthIn" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${r.widthIn}"></td>
+      <td class="w-24"><input class="tbl-input" data-id="${r.id}" data-k="heightIn" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${r.heightIn}"></td>
+      <td class="w-20"><input class="tbl-input" data-id="${r.id}" data-k="qty" type="text" inputmode="numeric" pattern="[0-9]*" value="${r.qty}"></td>
+      <td class="w-24 ta-r" id="sqft-${r.id}">${rowSqft(r).toFixed(2)}</td>
+      <td><input class="tbl-input" data-id="${r.id}" data-k="notes" type="text" autocapitalize="sentences" autocomplete="off" value="${escapeHtml(r.notes)}" placeholder="optional"></td>
+      <td class="ta-r"><span class="link" data-act="dup" data-id="${r.id}">Duplicate</span> | <span class="link danger" data-act="del" data-id="${r.id}">Delete</span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Incremental input handling
+  tbody.oninput = function(e){
+    var t = e.target; if(!t.dataset || !t.dataset.id) return;
+    var id = Number(t.dataset.id), key = t.dataset.k;
+    var row = rows.find(function(x){ return x.id===id; }); if(!row) return;
+    if(key==='area' || key==='notes'){ row[key] = t.value; }
+    else if(key==='qty'){
+      var raw = (t.value || '').replace(/\\D+/g, ''); t.value = raw; row.qty = raw ? parseInt(raw, 10) : 0;
+    } else if(key==='widthIn' || key==='heightIn'){
+      var r2 = (t.value || '').replace(/[^0-9.,]/g, ''); r2 = r2.replace(',', '.'); var parts = r2.split('.'); if(parts.length>2){ r2 = parts.shift() + '.' + parts.join(''); }
+      t.value = r2; row[key] = r2 ? parseFloat(r2) : 0;
+    }
+    var sq = rowSqft(row); var cell = document.getElementById("sqft-" + id); if(cell) cell.textContent = sq.toFixed(2);
+    updateTotalsAndPricing();
+  };
+
+  tbody.onclick = function(e){
+    var t=e.target; if(!t.dataset||!t.dataset.act) return; var id=Number(t.dataset.id);
+    if(t.dataset.act==='del'){
+      rows = rows.filter(function(x){ return x.id!==id; });
+      var tr = t.closest('tr'); if(tr) tr.remove(); updateTotalsAndPricing();
+    }
+    if(t.dataset.act==='dup'){
+      var src = rows.find(function(x){ return x.id===id; });
+      if(src){ rows.push(Object.assign({}, src, { id: nextRowId++ })); renderRows(); }
+    }
+  };
+
+  updateTotalsAndPricing();
+}
+
+// Email builder (Airy) + clipboard copy + mailto fallback
 function buildEmailHtml(){
   var projectName=($("#projectName") && $("#projectName").value || "").trim();
   var firstName=($("#firstName") && $("#firstName").value || "").trim();
   var serviceAddress=($("#serviceAddress") && $("#serviceAddress").value || "").trim();
   var sqft=totalSqft();
-  var miles=$("#miles")?num($("#miles").value,0):0;
+  var miles=$("#miles")?parseInt(($("#miles").value||"").replace(/\\D+/g,''),10)||0:0;
   var cer=calcFilm(ceramicMatrix, sqft, miles);
   var sol=calcFilm(solarMatrix, sqft, miles);
   var cerLine=cer.mode==="shop-min" ? "- <strong>Tier:</strong> "+escapeHtml(cer.tierLabel) : "- <strong>Discount tier applied:</strong> "+escapeHtml(cer.tierLabel)+" ("+cer.tierPct+"%)";
   var solLine=sol.mode==="shop-min" ? "- <strong>Tier:</strong> "+escapeHtml(sol.tierLabel) : "- <strong>Discount tier applied:</strong> "+escapeHtml(sol.tierLabel)+" ("+sol.tierPct+"%)";
-  return "<!DOCTYPE html><html><body style=\"font-family: Arial, sans-serif; color:#333; line-height:1.7; max-width:700px;\">"
+  return "<!DOCTYPE html><html><body style=\\"font-family: Arial, sans-serif; color:#333; line-height:1.7; max-width:700px;\\">"
     + "<p><strong>Subject:</strong> Your Window Film Proposal — " + escapeHtml(projectName) + "</p>"
     + "<p>" + escapeHtml(firstName) + ",</p>"
     + "<p>Thank you for the opportunity to support " + escapeHtml(serviceAddress) + ". Based on the verified measurements, please find two aligned options so you can select the performance profile and budget that best fit your goals.</p>"
     + "<p><strong>Total Glass Area</strong><br>- <strong>" + sqft.toFixed(2) + " sq ft</strong></p>"
-    + "<div style=\"background:#f8f8f8; padding:18px; border-left:4px solid #0d6efd; margin:22px 0;\">"
-    +   "<h2 style=\"margin:0 0 10px 0; font-size:19px;\">🌟 Option A — Premium Ceramic Window Film (TSER 69%+)</h2>"
+    + "<div style=\\"background:#f8f8f8; padding:18px; border-left:4px solid #0d6efd; margin:22px 0;\\">"
+    +   "<h2 style=\\"margin:0 0 10px 0; font-size:19px;\\">🌟 Option A — Premium Ceramic Window Film (TSER 69%+)</h2>"
     +   "<em>Our most advanced and most popular choice, combining performance and long-term value.</em>"
-    +   "<p style=\"margin:10px 0;\">Engineered to materially reduce solar heat gain and glare while maintaining optical clarity. This film delivers a <strong>Total Solar Energy Rejection of 69%+</strong>, helps stabilize interior temperatures, supports HVAC efficiency, and <strong>enhances the glass to elevate the exterior aesthetic.</strong></p>"
-    +   "<div style=\"height:10px\"></div>"
-    +   "<p>- <strong>Original price:</strong> " + money(cer.original) + "<br>"
-    +      cerLine + "<br>"
-    +      "- <strong>Your price:</strong> <strong>" + money(cer.finalPrice) + "</strong><br>"
-    +      "- <strong>You save:</strong> " + money(cer.savings) + "</p>"
-    +   "<div style=\"height:10px\"></div>"
-    +   "<p><strong>Warranty</strong><br>"
-    +     "- Residential: Lifetime warranty on film and workmanship<br>"
-    +     "- Commercial: 12-year warranty on film and workmanship</p>"
+    +   "<p>Engineered to materially reduce solar heat gain and glare while maintaining optical clarity. This film delivers a <strong>Total Solar Energy Rejection of 69%+</strong>, helps stabilize interior temperatures, supports HVAC efficiency, and <strong>enhances the glass to elevate the exterior aesthetic.</strong></p>"
+    +   "<div style=\\"height:10px\\"></div>"
+    +   "<p>- <strong>Original price:</strong> " + money(cer.original) + "<br>" + cerLine + "<br>- <strong>Your price:</strong> <strong>" + money(cer.finalPrice) + "</strong><br>- <strong>You save:</strong> " + money(cer.savings) + "</p>"
+    +   "<div style=\\"height:10px\\"></div>"
+    +   "<p><strong>Warranty</strong><br>- Residential: Lifetime warranty on film and workmanship<br>- Commercial: 12-year warranty on film and workmanship</p>"
     + "</div>"
-    + "<div style=\"background:#f8f8f8; padding:18px; border-left:4px solid #444; margin:22px 0;\">"
-    +   "<h2 style=\"margin:0 0 10px 0; font-size:19px;\">Option B — Solar Control Film (Budget-Friendly)</h2>"
+    + "<div style=\\"background:#f8f8f8; padding:18px; border-left:4px solid #444; margin:22px 0;\\">"
+    +   "<h2 style=\\"margin:0 0 10px 0; font-size:19px;\\">Option B — Solar Control Film (Budget-Friendly)</h2>"
     +   "<p>A cost-optimized solution that reduces heat and glare compared to untreated glass, offering a clean, neutral appearance. While designed for value, it is still installed to the same professional standards, ensuring durability and customer satisfaction.</p>"
-    +   "<div style=\"height:10px\"></div>"
-    +   "<p>- <strong>Original price:</strong> " + money(sol.original) + "<br>"
-    +      solLine + "<br>"
-    +      "- <strong>Your price:</strong> <strong>" + money(sol.finalPrice) + "</strong><br>"
-    +      "- <strong>You save:</strong> " + money(sol.savings) + "</p>"
-    +   "<div style=\"height:10px\"></div>"
-    +   "<p><strong>Warranty</strong><br>"
-    +     "This film comes with <strong>limited coverage supported by our professional installation team</strong>, giving you added peace of mind knowing that you’re in good hands.</p>"
+    +   "<div style=\\"height:10px\\"></div>"
+    +   "<p>- <strong>Original price:</strong> " + money(sol.original) + "<br>" + solLine + "<br>- <strong>Your price:</strong> <strong>" + money(sol.finalPrice) + "</strong><br>- <strong>You save:</strong> " + money(sol.savings) + "</p>"
+    +   "<div style=\\"height:10px\\"></div>"
+    +   "<p><strong>Warranty</strong><br>This film comes with <strong>limited coverage supported by our professional installation team</strong>, giving you added peace of mind knowing that you’re in good hands.</p>"
     + "</div>"
     + "<h2>Why Choose Us</h2>"
     + "<p>We are <strong>Veteran owned and operated</strong> and consistently recognized as a <strong>5-star rated provider</strong>, trusted by homeowners and businesses alike. Our team is committed to delivering a seamless experience and results that elevate comfort, performance, and aesthetic appeal.</p>"
     + "<p>Best regards,</p>"
     + "</body></html>";
 }
-
 function copyHtmlToClipboard(html){
   try{
     var div = document.createElement('div'); div.style.position='fixed'; div.style.left='-99999px'; div.style.top='0'; div.innerHTML = html; document.body.appendChild(div);
     var range = document.createRange(); range.selectNodeContents(div);
     var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
     var ok = document.execCommand('copy'); sel.removeAllRanges(); document.body.removeChild(div);
-    if(ok) return Promise.resolve(); else return Promise.reject(new Error('execCommand copy failed'));
+    return ok ? Promise.resolve() : Promise.reject(new Error('execCommand copy failed'));
   } catch(e){ return Promise.reject(e); }
+}
+
+function openOutlookCompose(){
+  var to = ($("#clientEmail") && $("#clientEmail").value || "").trim();
+  if(!to){ alert("Enter a Client Email first."); return; }
+  var subject = "Your Window Film Proposal — " + (($("#projectName") && $("#projectName").value || "").trim());
+  var html = buildEmailHtml();
+
+  // Copy rich HTML for optional paste in Outlook
+  copyHtmlToClipboard(html).then(function(){ TZ_TOAST && TZ_TOAST("Formatted email copied. Paste in compose to keep styling."); }).catch(function(){});
+
+  // Plain text body via mailto to guarantee a prefilled compose window
+  var div = document.createElement("div"); div.innerHTML = html; var plain = (div.innerText || "").replace(/\\r\\n/g,"\\n").replace(/\\n{3,}/g,"\\n\\n").split("\\n").join("\\r\\n");
+  var enc = encodeURIComponent;
+  var href = "mailto:" + enc(to) + "?subject=" + enc(subject) + "&body=" + enc(plain);
+  var a = document.createElement("a"); a.href = href; a.style.display = "none"; document.body.appendChild(a); a.click(); setTimeout(function(){ document.body.removeChild(a); }, 500);
 }
 
 // Settings editor
@@ -326,16 +362,16 @@ function renderMatrixEditor(container, matrix, onChange){
   matrix.forEach(function(t,i){
     var row = document.createElement("div");
     row.style.display="grid"; row.style.gridTemplateColumns="repeat(12, 1fr)"; row.style.gap="8px"; row.style.alignItems="end"; row.style.marginBottom="8px";
-    row.innerHTML = `<label class="block" style="grid-column: span 3;"><span class="label">Min sq ft</span><input data-i="${i}" data-k="min" type="number" value="${t.min}"></label>
-      <label class="block" style="grid-column: span 3;"><span class="label">Max sq ft</span><input data-i="${i}" data-k="max" type="text" value="${t.max===Infinity?'Infinity':t.max}"></label>
-      <label class="block" style="grid-column: span 3;"><span class="label">Rate $/sq ft</span><input data-i="${i}" data-k="rate" type="number" step="0.01" value="${t.rate}"></label>
+    row.innerHTML = `<label class="block" style="grid-column: span 3;"><span class="label">Min sq ft</span><input data-i="${i}" data-k="min" type="text" inputmode="numeric" pattern="[0-9]*" value="${t.min}"></label>
+      <label class="block" style="grid-column: span 3;"><span class="label">Max sq ft</span><input data-i="${i}" data-k="max" type="text" inputmode="numeric" pattern="[0-9]*|Infinity" value="${t.max===Infinity?'Infinity':t.max}"></label>
+      <label class="block" style="grid-column: span 3;"><span class="label">Rate $/sq ft</span><input data-i="${i}" data-k="rate" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${t.rate}"></label>
       <label class="block" style="grid-column: span 3;"><span class="label">Tier label</span><input data-i="${i}" data-k="label" type="text" value="${escapeHtml(t.label)}"></label>
       <div style="grid-column: 12 / span 1; justify-self: end;"><span class="link danger" data-i="${i}" data-act="remove">Remove</span></div>`;
     container.appendChild(row);
   });
   container.oninput=function(e){
     var t=e.target; var i=Number(t.dataset.i); var k=t.dataset.k; if(isNaN(i)||!k) return;
-    var patch={}; if(k==="max"){ patch[k]=t.value==="Infinity"?Infinity:num(t.value);} else if(k==="label"){patch[k]=t.value;} else {patch[k]=num(t.value);} matrix[i]=Object.assign({}, matrix[i], patch); onChange(matrix);
+    var patch={}; if(k==="max"){ patch[k]=t.value==="Infinity"?Infinity:parseFloat((t.value||"").replace(/[^0-9]/g,''))||0; } else if(k==="label"){patch[k]=t.value;} else {patch[k]=parseFloat((t.value||"").replace(/[^0-9.]/g,''))||0;} matrix[i]=Object.assign({}, matrix[i], patch); onChange(matrix);
   };
   container.onclick=function(e){ var t=e.target; if(t.dataset.act!=="remove") return; var i=Number(t.dataset.i); matrix.splice(i,1); onChange(matrix); };
 }
@@ -350,30 +386,9 @@ function openSettings(){
   modal.style.display="flex";
 }
 
-// Outlook compose
-function openOutlookCompose(){
-  var to = ($("#clientEmail") && $("#clientEmail").value || "").trim();
-  if(!to){ alert("Enter a Client Email first."); return; }
-  var subject = "Your Window Film Proposal — " + (($("#projectName") && $("#projectName").value || "").trim());
-  var html = buildEmailHtml();
-  var div = document.createElement("div"); div.innerHTML = html; var plain = div.innerText;
-  // Copy rich HTML to clipboard (with fallback)
-  copyHtmlToClipboard(html).then(function(){ TZ_TOAST && TZ_TOAST("Formatted email copied. Paste in Outlook compose."); }).catch(function(){ 
-    // fallback: copy plain text
-    try { navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.writeText(plain); } catch(_) {}
-    TZ_TOAST && TZ_TOAST("Copied plain text. Paste in Outlook compose.");
-  }).finally(function(){
-    var enc = encodeURIComponent;
-    var outlook = "ms-outlook://compose?to=" + enc(to) + "&subject=" + enc(subject);
-    var mailto = "mailto:" + enc(to) + "?subject=" + enc(subject);
-    try{ window.location.href = outlook; setTimeout(function(){ window.location.href = mailto; }, 700); }catch(e){ window.location.href = mailto; }
-  });
-}
-
 // Bindings
 document.addEventListener("DOMContentLoaded", function(){
   function bind(id, fn){ var el=document.getElementById(id); if(!el) return; el.addEventListener("click", fn, false); }
-
   bind("btnAddRow", function(){ rows.push({ id: nextRowId++, area:"", widthIn:0, heightIn:0, qty:1, notes:"" }); renderRows(); });
   bind("btnSettings", openSettings);
   bind("btnEmail", openOutlookCompose);
@@ -439,12 +454,15 @@ document.addEventListener("DOMContentLoaded", function(){
     modal.style.display = "flex";
   });
 
-  var milesEl=document.getElementById("miles"); if(milesEl){ milesEl.addEventListener("input", updateTotalsAndPricing); milesEl.addEventListener("change", updateTotalsAndPricing); }
+  var milesEl=document.getElementById("miles"); if(milesEl){
+    milesEl.addEventListener("input", function(){ this.value = (this.value||"").replace(/\\D+/g,""); updateTotalsAndPricing(); });
+    milesEl.addEventListener("change", updateTotalsAndPricing);
+  }
   var autoBtn=document.getElementById("btnAutoMiles");
   if(autoBtn){
     autoBtn.addEventListener("click", async function(){
       var jobZip=(document.getElementById("jobZip").value||"").trim();
-      if(!/^\d{5}$/.test(jobZip)){ alert("Enter a valid 5-digit Job ZIP."); return; }
+      if(!/^\\d{5}$/.test(jobZip)){ alert("Enter a valid 5-digit Job ZIP."); return; }
       autoBtn.disabled=true; var oldText=autoBtn.textContent; autoBtn.textContent="Calculating…";
       try{
         var shop=await zipToLatLng("75409"); var job=await zipToLatLng(jobZip);
