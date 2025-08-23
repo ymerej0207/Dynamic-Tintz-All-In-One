@@ -1,1 +1,1 @@
-const N='tintz-v7.4'; self.addEventListener('install', e=>self.skipWaiting()); self.addEventListener('activate', e=>self.clients.claim());
+const N='tintz-v7.2.1'; self.addEventListener('install', e=>self.skipWaiting()); self.addEventListener('activate', e=>self.clients.claim());
