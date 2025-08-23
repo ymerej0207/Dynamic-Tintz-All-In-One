@@ -136,7 +136,7 @@
       </div>
     </section>
 
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.2.1</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.3</div>
   </div>
 
   <!-- Customers Modal -->
@@ -273,40 +273,51 @@ function buildEmailHtml(){
   var sol=calcFilm(solarMatrix, sqft, miles);
   var cerLine=cer.mode==="shop-min" ? "- <strong>Tier:</strong> "+escapeHtml(cer.tierLabel) : "- <strong>Discount tier applied:</strong> "+escapeHtml(cer.tierLabel)+" ("+cer.tierPct+"%)";
   var solLine=sol.mode==="shop-min" ? "- <strong>Tier:</strong> "+escapeHtml(sol.tierLabel) : "- <strong>Discount tier applied:</strong> "+escapeHtml(sol.tierLabel)+" ("+sol.tierPct+"%)";
-  return `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; color:#333; line-height:1.6; max-width:700px;">
-    <p><strong>Subject:</strong> Your Window Film Proposal — ${escapeHtml(projectName)}</p>
-    <p>${escapeHtml(firstName)},</p>
-    <p>Thank you for the opportunity to support ${escapeHtml(serviceAddress)}. Based on the verified measurements, please find two aligned options so you can select the performance profile and budget that best fit your goals.</p>
-    <p><strong>Total Glass Area</strong><br>- <strong>${sqft.toFixed(2)} sq ft</strong></p>
+  return "<!DOCTYPE html><html><body style=\"font-family: Arial, sans-serif; color:#333; line-height:1.7; max-width:700px;\">"
+    + "<p><strong>Subject:</strong> Your Window Film Proposal — " + escapeHtml(projectName) + "</p>"
+    + "<p>" + escapeHtml(firstName) + ",</p>"
+    + "<p>Thank you for the opportunity to support " + escapeHtml(serviceAddress) + ". Based on the verified measurements, please find two aligned options so you can select the performance profile and budget that best fit your goals.</p>"
+    + "<p><strong>Total Glass Area</strong><br>- <strong>" + sqft.toFixed(2) + " sq ft</strong></p>"
+    + "<div style=\"background:#f8f8f8; padding:18px; border-left:4px solid #0d6efd; margin:22px 0;\">"
+    +   "<h2 style=\"margin:0 0 10px 0; font-size:19px;\">🌟 Option A — Premium Ceramic Window Film (TSER 69%+)</h2>"
+    +   "<em>Our most advanced and most popular choice, combining performance and long-term value.</em>"
+    +   "<p style=\"margin:10px 0;\">Engineered to materially reduce solar heat gain and glare while maintaining optical clarity. This film delivers a <strong>Total Solar Energy Rejection of 69%+</strong>, helps stabilize interior temperatures, supports HVAC efficiency, and <strong>enhances the glass to elevate the exterior aesthetic.</strong></p>"
+    +   "<div style=\"height:10px\"></div>"
+    +   "<p>- <strong>Original price:</strong> " + money(cer.original) + "<br>"
+    +      cerLine + "<br>"
+    +      "- <strong>Your price:</strong> <strong>" + money(cer.finalPrice) + "</strong><br>"
+    +      "- <strong>You save:</strong> " + money(cer.savings) + "</p>"
+    +   "<div style=\"height:10px\"></div>"
+    +   "<p><strong>Warranty</strong><br>"
+    +     "- Residential: Lifetime warranty on film and workmanship<br>"
+    +     "- Commercial: 12-year warranty on film and workmanship</p>"
+    + "</div>"
+    + "<div style=\"background:#f8f8f8; padding:18px; border-left:4px solid #444; margin:22px 0;\">"
+    +   "<h2 style=\"margin:0 0 10px 0; font-size:19px;\">Option B — Solar Control Film (Budget-Friendly)</h2>"
+    +   "<p>A cost-optimized solution that reduces heat and glare compared to untreated glass, offering a clean, neutral appearance. While designed for value, it is still installed to the same professional standards, ensuring durability and customer satisfaction.</p>"
+    +   "<div style=\"height:10px\"></div>"
+    +   "<p>- <strong>Original price:</strong> " + money(sol.original) + "<br>"
+    +      solLine + "<br>"
+    +      "- <strong>Your price:</strong> <strong>" + money(sol.finalPrice) + "</strong><br>"
+    +      "- <strong>You save:</strong> " + money(sol.savings) + "</p>"
+    +   "<div style=\"height:10px\"></div>"
+    +   "<p><strong>Warranty</strong><br>"
+    +     "This film comes with <strong>limited coverage supported by our professional installation team</strong>, giving you added peace of mind knowing that you’re in good hands.</p>"
+    + "</div>"
+    + "<h2>Why Choose Us</h2>"
+    + "<p>We are <strong>Veteran owned and operated</strong> and consistently recognized as a <strong>5-star rated provider</strong>, trusted by homeowners and businesses alike. Our team is committed to delivering a seamless experience and results that elevate comfort, performance, and aesthetic appeal.</p>"
+    + "<p>Best regards,</p>"
+    + "</body></html>";
+}
 
-    <div style="background:#f8f8f8; padding:16px; border-left:4px solid #0d6efd; margin:20px 0;">
-      <h2 style="margin:0 0 6px 0;">🌟 Option A — Premium Ceramic Window Film (TSER 69%+)</h2>
-      <em>Our most advanced and most popular choice, combining performance and long-term value.</em>
-      <p style="margin:10px 0 10px 0;">Engineered to materially reduce solar heat gain and glare while maintaining optical clarity. This film delivers a <strong>Total Solar Energy Rejection of 69%+</strong>, helps stabilize interior temperatures, supports HVAC efficiency, and <strong>enhances the glass to elevate the exterior aesthetic.</strong></p>
-      <p style="margin:8px 0 0 0;">- <strong>Original price:</strong> ${money(cer.original)}<br>
-         ${cerLine}<br>
-         - <strong>Your price:</strong> <strong>${money(cer.finalPrice)}</strong><br>
-         - <strong>You save:</strong> ${money(cer.savings)}</p>
-      <p style="margin:14px 0 0 0;"><strong>Warranty</strong><br>
-         - Residential: Lifetime warranty on film and workmanship<br>
-         - Commercial: 12-year warranty on film and workmanship</p>
-    </div>
-
-    <div style="background:#f8f8f8; padding:16px; border-left:4px solid #444; margin:20px 0;">
-      <h2 style="margin:0 0 6px 0;">Option B — Solar Control Film (Budget-Friendly)</h2>
-      <p style="margin:0 0 10px 0;">A cost-optimized solution that reduces heat and glare compared to untreated glass, offering a clean, neutral appearance. While designed for value, it is still installed to the same professional standards, ensuring durability and customer satisfaction.</p>
-      <p style="margin:8px 0 0 0;">- <strong>Original price:</strong> ${money(sol.original)}<br>
-         ${solLine}<br>
-         - <strong>Your price:</strong> <strong>${money(sol.finalPrice)}</strong><br>
-         - <strong>You save:</strong> ${money(sol.savings)}</p>
-      <p style="margin:14px 0 0 0;"><strong>Warranty</strong><br>
-         This film comes with <strong>limited coverage supported by our professional installation team</strong>, giving you added peace of mind knowing that you’re in good hands.</p>
-    </div>
-
-    <h2 style="margin:16px 0 6px 0;">Why Choose Us</h2>
-    <p>We are <strong>Veteran owned and operated</strong> and consistently recognized as a <strong>5-star rated provider</strong>, trusted by homeowners and businesses alike. Our team is committed to delivering a seamless experience and results that elevate comfort, performance, and aesthetic appeal.</p>
-    <p>Best regards,</p>
-  </body></html>`;
+function copyHtmlToClipboard(html){
+  try{
+    var div = document.createElement('div'); div.style.position='fixed'; div.style.left='-99999px'; div.style.top='0'; div.innerHTML = html; document.body.appendChild(div);
+    var range = document.createRange(); range.selectNodeContents(div);
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    var ok = document.execCommand('copy'); sel.removeAllRanges(); document.body.removeChild(div);
+    if(ok) return Promise.resolve(); else return Promise.reject(new Error('execCommand copy failed'));
+  } catch(e){ return Promise.reject(e); }
 }
 
 // Settings editor
@@ -345,11 +356,18 @@ function openOutlookCompose(){
   if(!to){ alert("Enter a Client Email first."); return; }
   var subject = "Your Window Film Proposal — " + (($("#projectName") && $("#projectName").value || "").trim());
   var html = buildEmailHtml();
-  var div = document.createElement("div"); div.innerHTML = html; var body = div.innerText; // plain text fallback
-  var enc = encodeURIComponent;
-  var outlook = "ms-outlook://compose?to=" + enc(to) + "&subject=" + enc(subject) + "&body=" + enc(body);
-  var mailto = "mailto:" + enc(to) + "?subject=" + enc(subject) + "&body=" + enc(body);
-  try{ window.location.href = outlook; setTimeout(function(){ window.location.href = mailto; }, 700); }catch(e){ window.location.href = mailto; }
+  var div = document.createElement("div"); div.innerHTML = html; var plain = div.innerText;
+  // Copy rich HTML to clipboard (with fallback)
+  copyHtmlToClipboard(html).then(function(){ TZ_TOAST && TZ_TOAST("Formatted email copied. Paste in Outlook compose."); }).catch(function(){ 
+    // fallback: copy plain text
+    try { navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.writeText(plain); } catch(_) {}
+    TZ_TOAST && TZ_TOAST("Copied plain text. Paste in Outlook compose.");
+  }).finally(function(){
+    var enc = encodeURIComponent;
+    var outlook = "ms-outlook://compose?to=" + enc(to) + "&subject=" + enc(subject);
+    var mailto = "mailto:" + enc(to) + "?subject=" + enc(subject);
+    try{ window.location.href = outlook; setTimeout(function(){ window.location.href = mailto; }, 700); }catch(e){ window.location.href = mailto; }
+  });
 }
 
 // Bindings
