@@ -118,8 +118,8 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     var sqft=totalSqft(); var totalEl=$("#totalSqft"); if(totalEl) totalEl.textContent=sqft.toFixed(2);
     var milesEl=$("#miles"); var milesVal=milesEl?parseIntSafe(milesEl.value):0; var milesEcho=$("#milesEcho"); if(milesEcho) milesEcho.textContent=milesVal;
     var cer=calcFilm(ceramicMatrix, sqft, milesVal); var sol=calcFilm(solarMatrix, sqft, milesVal);
-    var map=[["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",cer.tierPct+"%"],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
-             ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",sol.tierPct+"%"],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]];
+    var map=[["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",cer.tierPct+\"%\"],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
+             ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",sol.tierPct+\"%\"],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]];
     for(var i=0;i<map.length;i++){ var el=document.getElementById(map[i][0]); if(el){ el.textContent=map[i][1]; } }
   }
 
@@ -138,7 +138,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
         + '<td class="ta-r"><span class="link" data-act="dup" data-id="'+r.id+'">Duplicate</span> | <span class="link danger" data-act="del" data-id="'+r.id+'">Delete</span></td>';
       tbody.appendChild(tr);
     }
-    // Input: keep raw text; recompute math; no value mutations while typing
+    // Input: keep raw text; recompute; do not mutate value while typing
     tbody.addEventListener("input", function(e){
       var t=e.target; if(!t.dataset || !t.dataset.id) return;
       var id=parseInt(t.dataset.id,10), key=t.dataset.k;
@@ -229,9 +229,9 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     var div=document.createElement("div"); div.innerHTML=html; var plain=(div.innerText||"");
     if(plain.length>1800){ plain=plain.slice(0,1797)+"..."; }
     plain=plain.replace(/\n{3,}/g,"\n\n");
-    // safe CRLF for mailto
-    plain=plain.split("\n").join("%0D%0A");
-    var href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subject)+"&body="+plain;
+    plain=plain.replace(/\r?\n/g,"\r\n"); // normalize CRLF
+    var body=encodeURIComponent(plain);   // encode entire body so % and + are safe
+    var href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subject)+"&body="+body;
     var a=document.createElement("a"); a.href=href; a.style.display="none"; document.body.appendChild(a); a.click(); setTimeout(function(){ document.body.removeChild(a); }, 300);
   }
 
@@ -485,7 +485,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       </div>
     </section>
 
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.8</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.9</div>
   </div>
 
   <!-- Customers Modal -->
