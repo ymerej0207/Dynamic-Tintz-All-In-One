@@ -8,7 +8,6 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
   <title>Dynamic Tintz — Quote Builder (PWA)</title>
-  
   <style>
     :root { --bg: #f1f5f9; --card:#fff; --ink:#0f172a; --muted:#475569; --accent:#2563eb; --ring:#93c5fd; --radius: 16px; }
     * { box-sizing: border-box; }
@@ -40,19 +39,18 @@
     .modal { background:#fff; border-radius: 16px; width: min(900px, 100%); height: min(80vh, 100%); display:flex; flex-direction:column; overflow:hidden; }
     .modal header { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; display:flex; align-items:center; justify-content: space-between; }
     .modal .body { flex:1; overflow:auto; }
-    iframe { width:100%; height:100%; border:0; }
     .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; color:#3730a3; }
     .danger { color:#b91c1c; } .link { color:#2563eb; cursor: pointer; }
     .row-inline { display:flex; gap:8px; align-items:end; flex-wrap: wrap; }
     .small { font-size: 12px; }
-    .toast { position: fixed; bottom: 16px; right: 16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:12px; opacity:0.95; }
+    .toast { position: fixed; bottom: 16px; right: 16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:12px; opacity:0.95; z-index: 99999; }
   </style>
-
   <script>
+    // Minimal on-device diagnostics
     (function(){
-      function toast(msg){ try{ const t=document.createElement('div'); t.style.position='fixed'; t.style.bottom='16px'; t.style.right='16px'; t.style.background='#0f172a'; t.style.color='#fff'; t.style.padding='10px 14px'; t.style.borderRadius='12px'; t.style.zIndex='99999'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 4000); }catch(e){} }
-      window.addEventListener('error', function(e){ toast('JS error: ' + (e.message||'unknown')); });
-      window.addEventListener('unhandledrejection', function(e){ toast('Promise error: ' + (e.reason && e.reason.message ? e.reason.message : 'unknown')); });
+      function toast(msg){ try{ var t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 4000); }catch(e){} }
+      window.addEventListener('error', function(e){ toast('JS error: ' + (e.message || 'unknown')); });
+      window.addEventListener('unhandledrejection', function(e){ var m='Promise error'; try{ m = e.reason && (e.reason.message || String(e.reason)); }catch(_){} toast(m); });
       window.TZ_TOAST = toast;
     })();
   </script>
@@ -138,7 +136,7 @@
       </div>
     </section>
 
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.2</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.2.1</div>
   </div>
 
   <!-- Customers Modal -->
@@ -164,8 +162,6 @@
         <button class="btn" id="btnCloseSettings">Close</button>
       </header>
       <div class="body" style="padding: 12px 16px;">
-        
-
         <p class="muted">Update pricing matrices without code changes.</p>
         <div style="display:flex; gap:8px; margin-bottom:8px;">
           <button class="btn" id="btnResetMatrices">Restore Factory Matrix</button>
@@ -184,86 +180,99 @@
 
 <script>
 // Utility
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-const money = (n) => isNaN(n) ? "$0.00" : `$${n.toFixed(2)}`;
-const num = (v, fb=0) => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? fb : n; };
+var $ = function(sel){ return document.querySelector(sel); };
+var $$ = function(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+function money(n){ return isNaN(n) ? "$0.00" : "$" + n.toFixed(2); }
+function num(v, fb){ fb = fb===undefined ? 0 : fb; var n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? fb : n; }
 function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
+function toast(msg){ if(window.TZ_TOAST){ window.TZ_TOAST(msg); } }
+
 async function zipToLatLng(zip){
-  const res = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`);
-  if(!res.ok) throw new Error('Invalid ZIP');
-  const data = await res.json();
-  const place = data.places && data.places[0];
-  if(!place) throw new Error('ZIP not found');
-  return { lat: parseFloat(place['latitude']), lng: parseFloat(place['longitude']) };
+  var res = await fetch("https://api.zippopotam.us/us/" + encodeURIComponent(zip));
+  if(!res.ok) throw new Error("Invalid ZIP");
+  var data = await res.json();
+  var place = data.places && data.places[0];
+  if(!place) throw new Error("ZIP not found");
+  return { lat: parseFloat(place["latitude"]), lng: parseFloat(place["longitude"]) };
 }
 function haversineMiles(a, b){
-  const R = 3958.8; const toRad = (d)=> d * Math.PI / 180;
-  const dLat = toRad(b.lat - a.lat); const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat); const lat2 = toRad(b.lat);
-  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  var R = 3958.8; var toRad = function(d){ return d * Math.PI / 180; };
+  var dLat = toRad(b.lat - a.lat); var dLng = toRad(b.lng - a.lng);
+  var lat1 = toRad(a.lat); var lat2 = toRad(b.lat);
+  var h = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)*Math.sin(dLng/2);
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 // Storage
-const STORE_KEY = 'tintz.customers.v1';
-const MATRIX_STORE_KEY = 'tintz.matrices.v1';
-
-function getStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ return []; } }
+var STORE_KEY = "tintz.customers.v1";
+var MATRIX_STORE_KEY = "tintz.matrices.v1";
+function getStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); } catch(e){ return []; } }
 function setStore(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
-function getMatrices(){ try { return JSON.parse(localStorage.getItem(MATRIX_STORE_KEY) || 'null'); } catch(e){ return null; } }
+function getMatrices(){ try { return JSON.parse(localStorage.getItem(MATRIX_STORE_KEY) || "null"); } catch(e){ return null; } }
 function setMatrices(obj){ localStorage.setItem(MATRIX_STORE_KEY, JSON.stringify(obj)); }
 
-
-
 // Data
-let rows = [ { id: 1, area: 'Lobby North', widthIn: 48, heightIn: 72, qty: 2, notes: '' }, { id: 2, area: 'Conference A', widthIn: 60, heightIn: 60, qty: 3, notes: '' } ];
-let nextRowId = 3;
-const SHOP_MIN_SQFT = 18, SHOP_MIN_LOCAL = 250, SHOP_MIN_REMOTE = 350;
-let ceramicMatrix = [ { min:0, max:49, rate:12.0, label:'$12 (0–49)' }, { min:50, max:99, rate:11.0, label:'$11 (50–99)' }, { min:100, max:199, rate:10.0, label:'$10 (100–199)' }, { min:200, max:299, rate:9.0, label:'$9 (200–299)' }, { min:300, max:399, rate:8.0, label:'$8 (300–399)' }, { min:400, max:499, rate:7.0, label:'$7 (400–499)' }, { min:500, max:Infinity, rate:6.5, label:'$6.50 (500+)' } ];
-let solarMatrix   = [ { min:0, max:99, rate:7.5, label:'$7.50 (0–99)' }, { min:100, max:199, rate:6.5, label:'$6.50 (100–199)' }, { min:200, max:299, rate:6.0, label:'$6.00 (200–299)' }, { min:300, max:399, rate:5.5, label:'$5.50 (300–399)' }, { min:400, max:Infinity, rate:5.0, label:'$5.00 (400+)' } ];
+var rows = [ { id: 1, area: "Lobby North", widthIn: 48, heightIn: 72, qty: 2, notes: "" }, { id: 2, area: "Conference A", widthIn: 60, heightIn: 60, qty: 3, notes: "" } ];
+var nextRowId = 3;
+var SHOP_MIN_SQFT = 18, SHOP_MIN_LOCAL = 250, SHOP_MIN_REMOTE = 350;
+var ceramicMatrix = [ { min:0, max:49, rate:12.0, label:"$12 (0–49)" }, { min:50, max:99, rate:11.0, label:"$11 (50–99)" }, { min:100, max:199, rate:10.0, label:"$10 (100–199)" }, { min:200, max:299, rate:9.0, label:"$9 (200–299)" }, { min:300, max:399, rate:8.0, label:"$8 (300–399)" }, { min:400, max:499, rate:7.0, label:"$7 (400–499)" }, { min:500, max:Infinity, rate:6.5, label:"$6.50 (500+)" } ];
+var solarMatrix   = [ { min:0, max:99, rate:7.5, label:"$7.50 (0–99)" }, { min:100, max:199, rate:6.5, label:"$6.50 (100–199)" }, { min:200, max:299, rate:6.0, label:"$6.00 (200–299)" }, { min:300, max:399, rate:5.5, label:"$5.50 (300–399)" }, { min:400, max:Infinity, rate:5.0, label:"$5.00 (400+)" } ];
 // seed matrices if absent
-(function(){ const saved = getMatrices(); if(saved && saved.ceramic && saved.solar){ ceramicMatrix = saved.ceramic; solarMatrix = saved.solar; } else { setMatrices({ ceramic: ceramicMatrix, solar: solarMatrix }); } })();
+(function(){ var saved = getMatrices(); if(saved && saved.ceramic && saved.solar){ ceramicMatrix = saved.ceramic; solarMatrix = saved.solar; } else { setMatrices({ ceramic: ceramicMatrix, solar: solarMatrix }); } })();
 
 // Rendering & pricing
 function rowSqft(r){ return ((num(r.widthIn)||0)*(num(r.heightIn)||0)*(num(r.qty)||0))/144; }
-function totalSqft(){ return rows.reduce((a,r)=>a+rowSqft(r),0); }
+function totalSqft(){ return rows.reduce(function(a,r){ return a+rowSqft(r); },0); }
 function renderRows(){
-  const tbody = $("#rows"); if(!tbody) return; tbody.innerHTML = "";
-  rows.forEach(r=>{
-    const tr = document.createElement('tr');
+  var tbody = $("#rows"); if(!tbody) return; tbody.innerHTML = "";
+  rows.forEach(function(r){
+    var tr = document.createElement("tr");
     tr.innerHTML = `<td><input data-id="${r.id}" data-k="area" type="text" value="${escapeHtml(r.area)}" placeholder="e.g., Lobby North"></td>
       <td class="w-24"><input data-id="${r.id}" data-k="widthIn" type="number" value="${r.widthIn}"></td>
       <td class="w-24"><input data-id="${r.id}" data-k="heightIn" type="number" value="${r.heightIn}"></td>
       <td class="w-20"><input data-id="${r.id}" data-k="qty" type="number" value="${r.qty}"></td>
       <td class="w-24 ta-r">${rowSqft(r).toFixed(2)}</td>
       <td><input data-id="${r.id}" data-k="notes" type="text" value="${escapeHtml(r.notes)}" placeholder="optional"></td>
-      <td class="ta-r"><span class="link" data-act="dup" data-id="${r.id}">Duplicate</span>&nbsp;|&nbsp;<span class="link danger" data-act="del" data-id="${r.id}">Delete</span></td>`;
+      <td class="ta-r"><span class="link" data-act="dup" data-id="${r.id}">Duplicate</span> | <span class="link danger" data-act="del" data-id="${r.id}">Delete</span></td>`;
     tbody.appendChild(tr);
   });
-  tbody.oninput = (e)=>{ const t=e.target; if(!t.dataset||!t.dataset.id) return; const id=Number(t.dataset.id), key=t.dataset.k; const row=rows.find(r=>r.id===id); if(!row) return; row[key]=(key==='area'||key==='notes')?t.value:num(t.value); renderRows(); };
-  tbody.onclick = (e)=>{ const t=e.target; if(!t.dataset||!t.dataset.act) return; const id=Number(t.dataset.id); if(t.dataset.act==='del'){ rows=rows.filter(r=>r.id!==id); renderRows(); } if(t.dataset.act==='dup'){ const src=rows.find(r=>r.id===id); if(src){ rows.push({...src, id: nextRowId++}); renderRows(); } } };
+  tbody.oninput = function(e){ var t=e.target; if(!t.dataset||!t.dataset.id) return; var id=Number(t.dataset.id), key=t.dataset.k; var row=rows.find(function(x){ return x.id===id; }); if(!row) return; row[key]=(key==="area"||key==="notes")?t.value:num(t.value); renderRows(); };
+  tbody.onclick = function(e){ var t=e.target; if(!t.dataset||!t.dataset.act) return; var id=Number(t.dataset.id); if(t.dataset.act==="del"){ rows=rows.filter(function(x){ return x.id!==id; }); renderRows(); } if(t.dataset.act==="dup"){ var src=rows.find(function(x){ return x.id===id; }); if(src){ rows.push(Object.assign({}, src, { id: nextRowId++ })); renderRows(); } } };
   updateTotalsAndPricing();
 }
-function findBracket(matrix, sqft){ return matrix.find(t=>sqft>=t.min && sqft<=t.max) || matrix[0]; }
+function findBracket(matrix, sqft){ return matrix.find(function(t){ return sqft>=t.min && sqft<=t.max; }) || matrix[0]; }
 function highestRate(matrix){ return matrix.length ? matrix[0].rate : 0; }
 function calcFilm(matrix, sqft, miles){
-  if(sqft>0 && sqft<=SHOP_MIN_SQFT){ const price=(num(miles)||0)>50?SHOP_MIN_REMOTE:SHOP_MIN_LOCAL; return { mode:'shop-min', tierLabel:`Shop Minimum (≤${SHOP_MIN_SQFT} sq ft)`, original:price, finalPrice:price, savings:0, tierPct:0 }; }
-  const bracket=findBracket(matrix, sqft); const rate=bracket.rate; const original=highestRate(matrix)*sqft; const finalPrice=rate*sqft; const savings=Math.max(0, original-finalPrice); const pct=original>0?Math.round((savings/original)*100):0; return { mode:'matrix', tierLabel:bracket.label, original, finalPrice, savings, tierPct:pct };
+  if(sqft>0 && sqft<=SHOP_MIN_SQFT){
+    var price=(num(miles)||0)>50?SHOP_MIN_REMOTE:SHOP_MIN_LOCAL;
+    return { mode:"shop-min", tierLabel:"Shop Minimum (≤"+SHOP_MIN_SQFT+" sq ft)", original:price, finalPrice:price, savings:0, tierPct:0 };
+  }
+  var bracket=findBracket(matrix, sqft);
+  var rate=bracket.rate;
+  var original=highestRate(matrix)*sqft;
+  var finalPrice=rate*sqft;
+  var savings=Math.max(0, original-finalPrice);
+  var pct=original>0?Math.round((savings/original)*100):0;
+  return { mode:"matrix", tierLabel:bracket.label, original:original, finalPrice:finalPrice, savings:savings, tierPct:pct };
 }
 function updateTotalsAndPricing(){
-  const sqft=totalSqft(); const totalEl=$("#totalSqft"); if(totalEl) totalEl.textContent=sqft.toFixed(2);
-  const milesEl=$("#miles"); const milesVal=milesEl?num(milesEl.value,0):0; const milesEcho=$("#milesEcho"); if(milesEcho) milesEcho.textContent=milesVal;
-  const cer=calcFilm(ceramicMatrix, sqft, milesVal); const sol=calcFilm(solarMatrix, sqft, milesVal);
-  [["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",`${cer.tierPct}%`],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
-   ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",`${sol.tierPct}%`],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]].forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.textContent=val; });
+  var sqft=totalSqft(); var totalEl=$("#totalSqft"); if(totalEl) totalEl.textContent=sqft.toFixed(2);
+  var milesEl=$("#miles"); var milesVal=milesEl?num(milesEl.value,0):0; var milesEcho=$("#milesEcho"); if(milesEcho) milesEcho.textContent=milesVal;
+  var cer=calcFilm(ceramicMatrix, sqft, milesVal); var sol=calcFilm(solarMatrix, sqft, milesVal);
+  [["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",cer.tierPct+"%"],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
+   ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",sol.tierPct+"%"],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]].forEach(function(pair){ var id=pair[0], val=pair[1]; var el=document.getElementById(id); if(el) el.textContent=val; });
 }
 function buildEmailHtml(){
-  const projectName=($("#projectName")?.value||"").trim(); const firstName=($("#firstName")?.value||"").trim(); const serviceAddress=($("#serviceAddress")?.value||"").trim();
-  const sqft=totalSqft(); const miles=$("#miles")?num($("#miles").value,0):0; const cer=calcFilm(ceramicMatrix, sqft, miles); const sol=calcFilm(solarMatrix, sqft, miles);
-  const cerLine=cer.mode==='shop-min'?`- <strong>Tier:</strong> ${escapeHtml(cer.tierLabel)}`:`- <strong>Discount tier applied:</strong> ${escapeHtml(cer.tierLabel)} (${cer.tierPct}%)`;
-  const solLine=sol.mode==='shop-min'?`- <strong>Tier:</strong> ${escapeHtml(sol.tierLabel)}`:`- <strong>Discount tier applied:</strong> ${escapeHtml(sol.tierLabel)} (${sol.tierPct}%)`;
+  var projectName=($("#projectName") && $("#projectName").value || "").trim();
+  var firstName=($("#firstName") && $("#firstName").value || "").trim();
+  var serviceAddress=($("#serviceAddress") && $("#serviceAddress").value || "").trim();
+  var sqft=totalSqft();
+  var miles=$("#miles")?num($("#miles").value,0):0;
+  var cer=calcFilm(ceramicMatrix, sqft, miles);
+  var sol=calcFilm(solarMatrix, sqft, miles);
+  var cerLine=cer.mode==="shop-min" ? "- <strong>Tier:</strong> "+escapeHtml(cer.tierLabel) : "- <strong>Discount tier applied:</strong> "+escapeHtml(cer.tierLabel)+" ("+cer.tierPct+"%)";
+  var solLine=sol.mode==="shop-min" ? "- <strong>Tier:</strong> "+escapeHtml(sol.tierLabel) : "- <strong>Discount tier applied:</strong> "+escapeHtml(sol.tierLabel)+" ("+sol.tierPct+"%)";
   return `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; color:#333; line-height:1.6; max-width:700px;">
     <p><strong>Subject:</strong> Your Window Film Proposal — ${escapeHtml(projectName)}</p>
     <p>${escapeHtml(firstName)},</p>
@@ -302,8 +311,10 @@ function buildEmailHtml(){
 
 // Settings editor
 function renderMatrixEditor(container, matrix, onChange){
-  container.innerHTML = ''; matrix.forEach((t,i)=>{
-    const row = document.createElement('div'); row.style.display='grid'; row.style.gridTemplateColumns='repeat(12, 1fr)'; row.style.gap='8px'; row.style.alignItems='end'; row.style.marginBottom='8px';
+  container.innerHTML = "";
+  matrix.forEach(function(t,i){
+    var row = document.createElement("div");
+    row.style.display="grid"; row.style.gridTemplateColumns="repeat(12, 1fr)"; row.style.gap="8px"; row.style.alignItems="end"; row.style.marginBottom="8px";
     row.innerHTML = `<label class="block" style="grid-column: span 3;"><span class="label">Min sq ft</span><input data-i="${i}" data-k="min" type="number" value="${t.min}"></label>
       <label class="block" style="grid-column: span 3;"><span class="label">Max sq ft</span><input data-i="${i}" data-k="max" type="text" value="${t.max===Infinity?'Infinity':t.max}"></label>
       <label class="block" style="grid-column: span 3;"><span class="label">Rate $/sq ft</span><input data-i="${i}" data-k="rate" type="number" step="0.01" value="${t.rate}"></label>
@@ -311,95 +322,129 @@ function renderMatrixEditor(container, matrix, onChange){
       <div style="grid-column: 12 / span 1; justify-self: end;"><span class="link danger" data-i="${i}" data-act="remove">Remove</span></div>`;
     container.appendChild(row);
   });
-  container.oninput=(e)=>{ const t=e.target; const i=Number(t.dataset.i); const k=t.dataset.k; if(isNaN(i)||!k) return;
-    const patch={}; if(k==='max'){ patch[k]=t.value==='Infinity'?Infinity:num(t.value);} else if(k==='label'){patch[k]=t.value;} else {patch[k]=num(t.value);} matrix[i]={...matrix[i],...patch}; onChange(matrix);
+  container.oninput=function(e){
+    var t=e.target; var i=Number(t.dataset.i); var k=t.dataset.k; if(isNaN(i)||!k) return;
+    var patch={}; if(k==="max"){ patch[k]=t.value==="Infinity"?Infinity:num(t.value);} else if(k==="label"){patch[k]=t.value;} else {patch[k]=num(t.value);} matrix[i]=Object.assign({}, matrix[i], patch); onChange(matrix);
   };
-  container.onclick=(e)=>{ const t=e.target; if(t.dataset.act!=='remove') return; const i=Number(t.dataset.i); matrix.splice(i,1); onChange(matrix); };
+  container.onclick=function(e){ var t=e.target; if(t.dataset.act!=="remove") return; var i=Number(t.dataset.i); matrix.splice(i,1); onChange(matrix); };
 }
 function openSettings(){
-  const modal=$("#settingsModal");
-  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix=[...m]; setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); });
-  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix=[...m]; setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); });
-  $("#addCerTier").onclick=()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); openSettings(); };
-  $("#addSolTier").onclick=()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); openSettings(); };
-  $("#btnResetMatrices").onclick=()=>{ ceramicMatrix=[ { min:0, max:49, rate:12.0, label:'$12 (0–49)' }, { min:50, max:99, rate:11.0, label:'$11 (50–99)' }, { min:100, max:199, rate:10.0, label:'$10 (100–199)' }, { min:200, max:299, rate:9.0, label:'$9 (200–299)' }, { min:300, max:399, rate:8.0, label:'$8 (300–399)' }, { min:400, max:499, rate:7.0, label:'$7 (400–499)' }, { min:500, max:Infinity, rate:6.5, label:'$6.50 (500+)' } ]; solarMatrix=[ { min:0, max:99, rate:7.5, label:'$7.50 (0–99)' }, { min:100, max:199, rate:6.5, label:'$6.50 (100–199)' }, { min:200, max:299, rate:6.0, label:'$6.00 (200–299)' }, { min:300, max:399, rate:5.5, label:'$5.50 (300–399)' }, { min:400, max:Infinity, rate:5.0, label:'$5.00 (400+)' } ]; setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); };
-  // MSAL config
-  const cid = document.getElementById('msClientId'); const status = document.getElementById('msStatus');
-  const conf = getMsConf() || { clientId: '', redirectUri: window.location.origin + window.location.pathname };
-  if(cid) cid.value = conf.clientId || '';
-  function setStatus(text){ if(status) status.value = text; }
-  let msalApp = null, msAccount = null;
-  function msInit(){
-    if(!conf.clientId){ setStatus('Not connected'); return; }
-    try{
-      msalApp = new msal.PublicClientApplication({
-        auth: { clientId: conf.clientId, authority: 'https://login.microsoftonline.com/common', redirectUri: conf.redirectUri || window.location.origin + window.location.pathname },
-        cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
-      });
-      msalApp.handleRedirectPromise().then((res)=>{
-        if(res && res.account){ msAccount = res.account; setStatus('Connected: ' + (msAccount.username||'Account')); }
-        else { const a = msalApp.getAllAccounts(); if(a.length){ msAccount=a[0]; setStatus('Connected: ' + (msAccount.username||'Account')); } else { setStatus('Not connected'); } }
-      }).catch(()=> setStatus('Auth error'));
-    }catch(e){ setStatus('MSAL init error'); }
-  }
-  msInit();
-  const bTest = document.getElementById('btnTestSend'); if(bTest){ bTest.onclick = async ()=>{
-      if(!msalApp){ alert('Save Client ID first.'); return; }
-      const a = msalApp.getAllAccounts(); if(!a.length){ alert('Sign in first.'); return; }
-      const token = await msalApp.acquireTokenSilent({ account: a[0], scopes: ['Mail.Send'] }).catch(()=>null);
-      if(!token){ msalApp.acquireTokenRedirect({ account: a[0], scopes: ['Mail.Send'] }); return; }
-      const me = a[0].username;
-      const html = buildEmailHtml();
-      const payload = { message: { subject: 'Test — Dynamic Tintz PWA', body: { contentType:'HTML', content: html }, toRecipients: [{ emailAddress:{ address: me }}] }, saveToSentItems: true };
-      const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', { method:'POST', headers:{ 'Authorization':'Bearer '+token.accessToken, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
-      if(res.ok) alert('Test sent to ' + me); else alert('Graph send failed');
-    }; }
-  $("#btnCloseSettings").onclick=()=>{ modal.style.display='none'; };
+  var modal=$("#settingsModal");
+  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, function(m){ ceramicMatrix=[].concat(m); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); });
+  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, function(m){ solarMatrix=[].concat(m); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); });
+  $("#addCerTier").onclick=function(){ ceramicMatrix.push({min:0,max:0,rate:0,label:"Custom"}); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); openSettings(); };
+  $("#addSolTier").onclick=function(){ solarMatrix.push({min:0,max:0,rate:0,label:"Custom"}); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); openSettings(); };
+  $("#btnResetMatrices").onclick=function(){ ceramicMatrix=[ { min:0, max:49, rate:12.0, label:"$12 (0–49)" }, { min:50, max:99, rate:11.0, label:"$11 (50–99)" }, { min:100, max:199, rate:10.0, label:"$10 (100–199)" }, { min:200, max:299, rate:9.0, label:"$9 (200–299)" }, { min:300, max:399, rate:8.0, label:"$8 (300–399)" }, { min:400, max:499, rate:7.0, label:"$7 (400–499)" }, { min:500, max:Infinity, rate:6.5, label:"$6.50 (500+)" } ]; solarMatrix=[ { min:0, max:99, rate:7.5, label:"$7.50 (0–99)" }, { min:100, max:199, rate:6.5, label:"$6.50 (100–199)" }, { min:200, max:299, rate:6.0, label:"$6.00 (200–299)" }, { min:300, max:399, rate:5.5, label:"$5.50 (300–399)" }, { min:400, max:Infinity, rate:5.0, label:"$5.00 (400+)" } ]; setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); };
+  $("#btnCloseSettings").onclick=function(){ modal.style.display="none"; };
+  modal.style.display="flex";
 }
 
-// Email send
-function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>{ t.remove(); }, 2200); }
+// Outlook compose
 function openOutlookCompose(){
-  const to = ($("#clientEmail")?.value || '').trim();
-  const subject = `Your Window Film Proposal — ${($("#projectName")?.value || '').trim()}`;
-  const html = buildEmailHtml();
-  const enc = encodeURIComponent;
-  const plain = html.replace(/<[^>]+>/g,''); // fallback uses plain text
-  const outlook = `ms-outlook://compose?to=${enc(to)}&subject=${enc(subject)}&body=${enc(plain)}`;
-  const mailto = `mailto:${enc(to)}?subject=${enc(subject)}&body=${enc(plain)}`;
-  window.location.href = outlook; setTimeout(()=>{ window.location.href = mailto; }, 700);
+  var to = ($("#clientEmail") && $("#clientEmail").value || "").trim();
+  if(!to){ alert("Enter a Client Email first."); return; }
+  var subject = "Your Window Film Proposal — " + (($("#projectName") && $("#projectName").value || "").trim());
+  var html = buildEmailHtml();
+  var div = document.createElement("div"); div.innerHTML = html; var body = div.innerText; // plain text fallback
+  var enc = encodeURIComponent;
+  var outlook = "ms-outlook://compose?to=" + enc(to) + "&subject=" + enc(subject) + "&body=" + enc(body);
+  var mailto = "mailto:" + enc(to) + "?subject=" + enc(subject) + "&body=" + enc(body);
+  try{ window.location.href = outlook; setTimeout(function(){ window.location.href = mailto; }, 700); }catch(e){ window.location.href = mailto; }
 }
 
 // Bindings
-document.addEventListener('DOMContentLoaded', ()=>{
-  const bind=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; el.addEventListener('click', fn, false); };
-  bind('btnAddRow', ()=>{ rows.push({ id: nextRowId++, area:'', widthIn:0, heightIn:0, qty:1, notes:'' }); renderRows(); });
-  bind('btnSettings', openSettings);
+document.addEventListener("DOMContentLoaded", function(){
+  function bind(id, fn){ var el=document.getElementById(id); if(!el) return; el.addEventListener("click", fn, false); }
 
-  bind('btnSaveCustomer', ()=>{ const state={ firstName: $("#firstName")?.value || "", clientEmail: $("#clientEmail")?.value || "", clientPhone: $("#clientPhone")?.value || "", serviceAddress: $("#serviceAddress")?.value || "", projectName: $("#projectName")?.value || "", jobZip: $("#jobZip")?.value || "", miles: $("#miles")?.value || "0", rows: rows, ceramicMatrix: ceramicMatrix, solarMatrix: solarMatrix }; const suggested=(state.firstName||'Customer')+' — '+(state.projectName||'Project'); const label=prompt('Save as:', suggested); if(label===null) return; const rec={...state,label,createdAt:Date.now()}; const data=getStore(); data.unshift(rec); setStore(data); toast('Saved to this device.'); });
-  bind('btnCustomers', ()=>{
-    const modal = $("#customersModal"); const list = $("#customersList"); const search = $("#customerSearch");
-    function render(filterText){ const data=getStore(); list.innerHTML=''; const f=(filterText||'').toLowerCase().trim(); const filtered = !f ? data : data.filter(rec => { const hay=[rec.label,rec.firstName,rec.projectName,rec.clientEmail,rec.serviceAddress,rec.jobZip].filter(Boolean).join(' ').toLowerCase(); return hay.indexOf(f)!==-1; }); if(!filtered.length){ list.innerHTML='<div class=\"muted\">No matching customers.</div>'; return; } filtered.forEach((rec, idx)=>{ const div=document.createElement('div'); div.className='card'; const created=rec.createdAt?new Date(rec.createdAt).toLocaleString():''; div.innerHTML=`<div style=\"display:flex; justify-content:space-between; align-items:start; gap:8px;\"><div><div><strong>${escapeHtml(rec.label || (rec.firstName||'') + ' — ' + (rec.projectName||''))}</strong></div><div class=\"muted small\">${escapeHtml(rec.clientEmail || '')} • ${escapeHtml(rec.projectName || '')}</div><div class=\"muted small\">${escapeHtml(rec.serviceAddress || '')}</div><div class=\"muted small\">Saved: ${escapeHtml(created)}</div></div><div style=\"display:flex; gap:8px;\"><button class=\"btn\" data-idx=\"${idx}\" data-act=\"load\">Load</button><button class=\"btn\" data-idx=\"${idx}\" data-act=\"delete\">Delete</button></div></div>`; list.appendChild(div); }); }
-    render(''); if (search){ search.oninput = ()=> render(search.value); }
-    list.onclick = (e)=>{ const t=e.target; if(!t.dataset||t.dataset.idx===undefined) return; const idx=Number(t.dataset.idx); const data=getStore(); if(t.dataset.act==='load'){ const rec=data[idx]; $("#firstName").value=rec.firstName||''; $("#clientEmail").value=rec.clientEmail||''; $("#clientPhone").value=rec.clientPhone||''; $("#serviceAddress").value=rec.serviceAddress||''; $("#projectName").value=rec.projectName||''; $("#jobZip").value=rec.jobZip||''; $("#miles").value=rec.miles||'0'; rows=Array.isArray(rec.rows)?rec.rows.map(r=>({...r})):[]; nextRowId=rows.reduce((m,r)=>Math.max(m,r.id||0),0)+1; ceramicMatrix=Array.isArray(rec.ceramicMatrix)?rec.ceramicMatrix.map(t=>({...t})):ceramicMatrix; solarMatrix=Array.isArray(rec.solarMatrix)?rec.solarMatrix.map(t=>({...t})):solarMatrix; renderRows(); toast('Customer loaded.'); } else if(t.dataset.act==='delete'){ if(confirm('Delete this saved customer from this device?')){ data.splice(idx,1); setStore(data); render(search?search.value:''); } } };
-    document.getElementById('closeCustomers').onclick = ()=>{ modal.style.display='none'; };
-    modal.style.display='flex';
+  bind("btnAddRow", function(){ rows.push({ id: nextRowId++, area:"", widthIn:0, heightIn:0, qty:1, notes:"" }); renderRows(); });
+  bind("btnSettings", openSettings);
+  bind("btnEmail", openOutlookCompose);
+
+  bind("btnSaveCustomer", function(){
+    var state={ firstName: $("#firstName")?$("#firstName").value:"", clientEmail: $("#clientEmail")?$("#clientEmail").value:"", clientPhone: $("#clientPhone")?$("#clientPhone").value:"",
+      serviceAddress: $("#serviceAddress")?$("#serviceAddress").value:"", projectName: $("#projectName")?$("#projectName").value:"", jobZip: $("#jobZip")?$("#jobZip").value:"", miles: $("#miles")?$("#miles").value:"0",
+      rows: rows, ceramicMatrix: ceramicMatrix, solarMatrix: solarMatrix };
+    var suggested=(state.firstName||"Customer")+" — "+(state.projectName||"Project");
+    var label=prompt("Save as:", suggested); if(label===null) return;
+    var rec=Object.assign({}, state, {label:label, createdAt: Date.now()});
+    var data=getStore(); data.unshift(rec); setStore(data); toast("Saved to this device.");
   });
-  const milesEl=document.getElementById('miles'); if(milesEl){ milesEl.addEventListener('input', updateTotalsAndPricing); milesEl.addEventListener('change', updateTotalsAndPricing); }
-  const autoBtn=document.getElementById('btnAutoMiles'); if(autoBtn){ autoBtn.addEventListener('click', async ()=>{ const btn=document.getElementById('btnAutoMiles'); const jobZip=document.getElementById('jobZip').value.trim(); if(!/^\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; } btn.disabled=true; const oldText=btn.textContent; btn.textContent='Calculating…'; try{ const [shop,job]=await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]); const miles=haversineMiles(shop,job); const rounded=Math.round(miles); document.getElementById('miles').value=String(rounded); updateTotalsAndPricing(); }catch(e){ alert('Could not resolve ZIP distance. You can enter miles manually.'); } finally{ btn.disabled=false; btn.textContent=oldText; } }, false); autoBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); autoBtn.click(); }, false); }
-  bind('btnEmail', openOutlookCompose);
-    if(!to){ alert('Enter a Client Email first.'); return; }
-    const subject = `Your Window Film Proposal — ${($("#projectName")?.value || '').trim()}`;
-    const html = buildEmailHtml();
-    // Try Microsoft Graph first if configured
-    try{
-      const conf = getMsConf(); if(conf && conf.clientId){\n        const app = new msal.PublicClientApplication({ auth: { clientId: conf.clientId, authority: 'https://login.microsoftonline.com/common', redirectUri: conf.redirectUri || window.location.origin + window.location.pathname }, cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false } });\n        const accts = app.getAllAccounts(); if(!accts.length){ toast('Sign in via Settings first. Falling back to Outlook compose.'); throw new Error('noaccount'); }\n        const token = await app.acquireTokenSilent({ account: accts[0], scopes: ['Mail.Send'] }).catch(()=>null);\n        if(!token){ app.acquireTokenRedirect({ account: accts[0], scopes: ['Mail.Send'] }); return; }\n        const payload = { message: { subject: subject, body: { contentType:'HTML', content: html }, toRecipients: [{ emailAddress:{ address: to }}] }, saveToSentItems: true };\n        const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', { method:'POST', headers:{ 'Authorization':'Bearer '+token.accessToken, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });\n        if(res.ok){ toast('Email sent via Microsoft 365.'); return; } else { const txt = await res.text(); console.log(txt); toast('Graph send failed. Using Outlook.'); throw new Error('graphfail'); }\n      }\n    }catch(e){ /* fallthrough to Outlook */ }\n    // Fallback: Outlook compose (user taps Send)\n    const enc = encodeURIComponent; const plain = html.replace(/<[^>]+>/g,''); const outlook = `ms-outlook://compose?to=${enc(to)}&subject=${enc(subject)}&body=${enc(plain)}`; const mailto = `mailto:${enc(to)}?subject=${enc(subject)}&body=${enc(plain)}`; window.location.href = outlook; setTimeout(()=>{ window.location.href = mailto; }, 700);\n  });
+
+  bind("btnCustomers", function(){
+    var modal = $("#customersModal"); var list = $("#customersList"); var search = $("#customerSearch");
+    function render(filterText){
+      var data=getStore(); list.innerHTML=""; var f=(filterText||"").toLowerCase().trim();
+      var filtered = !f ? data : data.filter(function(rec){
+        var hay=[rec.label,rec.firstName,rec.projectName,rec.clientEmail,rec.serviceAddress,rec.jobZip].filter(Boolean).join(" ").toLowerCase();
+        return hay.indexOf(f)!==-1;
+      });
+      if(!filtered.length){ list.innerHTML = '<div class="muted">No matching customers.</div>'; return; }
+      filtered.forEach(function(rec, idx){
+        var div=document.createElement("div"); div.className="card";
+        var created=rec.createdAt?new Date(rec.createdAt).toLocaleString():"";
+        div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:start; gap:8px;">
+          <div>
+            <div><strong>${escapeHtml(rec.label || ((rec.firstName||"") + " — " + (rec.projectName||"")))}</strong></div>
+            <div class="muted small">${escapeHtml(rec.clientEmail || "")} • ${escapeHtml(rec.projectName || "")}</div>
+            <div class="muted small">${escapeHtml(rec.serviceAddress || "")}</div>
+            <div class="muted small">Saved: ${escapeHtml(created)}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" data-idx="${idx}" data-act="load">Load</button>
+            <button class="btn" data-idx="${idx}" data-act="delete">Delete</button>
+          </div>
+        </div>`;
+        list.appendChild(div);
+      });
+    }
+    render("");
+    if (search){ search.oninput = function(){ render(search.value); }; }
+    list.onclick = function(e){
+      var t=e.target; if(!t.dataset || t.dataset.idx===undefined) return;
+      var idx=Number(t.dataset.idx); var data=getStore();
+      if(t.dataset.act==="load"){
+        var rec=data[idx];
+        $("#firstName").value=rec.firstName||""; $("#clientEmail").value=rec.clientEmail||""; $("#clientPhone").value=rec.clientPhone||"";
+        $("#serviceAddress").value=rec.serviceAddress||""; $("#projectName").value=rec.projectName||""; $("#jobZip").value=rec.jobZip||"";
+        $("#miles").value=rec.miles||"0"; rows=Array.isArray(rec.rows)?rec.rows.map(function(r){ return Object.assign({}, r); }):[];
+        nextRowId=rows.reduce(function(m,r){ return Math.max(m, r.id||0); },0)+1;
+        ceramicMatrix=Array.isArray(rec.ceramicMatrix)?rec.ceramicMatrix.map(function(t){ return Object.assign({}, t); }):ceramicMatrix;
+        solarMatrix=Array.isArray(rec.solarMatrix)?rec.solarMatrix.map(function(t){ return Object.assign({}, t); }):solarMatrix;
+        renderRows(); toast("Customer loaded.");
+      } else if(t.dataset.act==="delete"){
+        if(confirm("Delete this saved customer from this device?")){
+          data.splice(idx,1); setStore(data); render(search ? search.value : "");
+        }
+      }
+    };
+    document.getElementById("closeCustomers").onclick = function(){ modal.style.display="none"; };
+    modal.style.display = "flex";
+  });
+
+  var milesEl=document.getElementById("miles"); if(milesEl){ milesEl.addEventListener("input", updateTotalsAndPricing); milesEl.addEventListener("change", updateTotalsAndPricing); }
+  var autoBtn=document.getElementById("btnAutoMiles");
+  if(autoBtn){
+    autoBtn.addEventListener("click", async function(){
+      var jobZip=(document.getElementById("jobZip").value||"").trim();
+      if(!/^\d{5}$/.test(jobZip)){ alert("Enter a valid 5-digit Job ZIP."); return; }
+      autoBtn.disabled=true; var oldText=autoBtn.textContent; autoBtn.textContent="Calculating…";
+      try{
+        var shop=await zipToLatLng("75409"); var job=await zipToLatLng(jobZip);
+        var miles=haversineMiles(shop,job); var rounded=Math.round(miles);
+        document.getElementById("miles").value=String(rounded); updateTotalsAndPricing();
+      }catch(e){ alert("Could not resolve ZIP distance. You can enter miles manually."); }
+      finally{ autoBtn.disabled=false; autoBtn.textContent=oldText; }
+    });
+  }
+
   renderRows();
 });
 
-// SW disabled by default
-const ENABLE_OFFLINE=false;
-if (ENABLE_OFFLINE && 'serviceWorker' in navigator) { window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js', { scope: './' }); }); }
+// SW disabled by default during iteration
+var ENABLE_OFFLINE=false;
+if (ENABLE_OFFLINE && "serviceWorker" in navigator) {
+  window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js", { scope: "./" }); });
+}
 </script>
 </body>
 </html>
