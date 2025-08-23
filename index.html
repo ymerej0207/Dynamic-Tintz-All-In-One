@@ -8,6 +8,7 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
   <title>Dynamic Tintz — Quote Builder (PWA)</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script>
   <style>
     :root { --bg: #f1f5f9; --card:#fff; --ink:#0f172a; --muted:#475569; --accent:#2563eb; --ring:#93c5fd; --radius: 16px; }
     * { box-sizing: border-box; }
@@ -44,6 +45,7 @@
     .danger { color:#b91c1c; } .link { color:#2563eb; cursor: pointer; }
     .row-inline { display:flex; gap:8px; align-items:end; flex-wrap: wrap; }
     .small { font-size: 12px; }
+    .toast { position: fixed; bottom: 16px; right: 16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:12px; opacity:0.95; }
   </style>
 </head>
 <body>
@@ -57,7 +59,7 @@
         <button class="btn" id="btnSettings">Settings</button>
         <button class="btn" id="btnSaveCustomer">Save Customer</button>
         <button class="btn" id="btnCustomers">Customers</button>
-        <button class="btn primary" id="btnEmail">Generate Email</button>
+        <button class="btn primary" id="btnEmail">Generate & Send</button>
         <button class="btn" id="btnOutlook">Open in Outlook</button>
       </div>
     </header>
@@ -128,12 +130,7 @@
       </div>
     </section>
 
-    <!-- CTA: single button removed; keep copy only -->
-    <section style="margin-top:16px; display:flex; gap:8px; flex-wrap: wrap;">
-      <button class="btn" id="btnCopy">Copy Email (Plain Text)</button>
-    </section>
-
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v6</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7</div>
   </div>
 
   <!-- Customers Modal -->
@@ -159,7 +156,23 @@
         <button class="btn" id="btnCloseSettings">Close</button>
       </header>
       <div class="body" style="padding: 12px 16px;">
+        <h4>Email Sending (Microsoft 365)</h4>
+        <div class="grid two" style="margin-bottom:8px;">
+          <label class="block"><span class="label">Microsoft App Client ID</span><input id="msClientId" type="text" placeholder="Paste your Azure App (Application) ID"></label>
+          <label class="block"><span class="label">Status</span><input id="msStatus" type="text" value="Not connected" disabled></label>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+          <button class="btn" id="btnMsSave">Save Config</button>
+          <button class="btn" id="btnMsLogin">Sign In with Microsoft</button>
+          <button class="btn" id="btnMsLogout">Sign Out</button>
+          <button class="btn" id="btnTestSend">Test Send (to me)</button>
+        </div>
+        <div class="muted small" style="margin-bottom:16px;">Uses Microsoft Graph → <code>Mail.Send</code> with delegated permission. Your credentials never leave Microsoft; tokens are cached locally.</div>
+
         <p class="muted">Update pricing matrices without code changes.</p>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <button class="btn" id="btnResetMatrices">Restore Factory Matrix</button>
+        </div>
 
         <h4>Premium Ceramic Matrix</h4>
         <div id="ceramicMatrixEditor"></div>
@@ -169,23 +182,6 @@
         <div id="solarMatrixEditor"></div>
         <button class="btn" id="addSolTier">+ Add Tier</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Email Preview Modal -->
-  <div id="emailModal" class="modal-backdrop" style="display:none;">
-    <div class="modal">
-      <header>
-        <div>
-          <strong>Email Preview</strong>
-          <div class="muted">Subject: <span id="subjectEcho"></span></div>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" id="copyPlain">Copy Plain Text</button>
-          <button class="btn" id="closeEmail">Close</button>
-        </div>
-      </header>
-      <div class="body"><iframe id="emailFrame" title="email"></iframe></div>
     </div>
   </div>
 
@@ -215,60 +211,14 @@ function haversineMiles(a, b){
 
 // Storage
 const STORE_KEY = 'tintz.customers.v1';
+const MATRIX_STORE_KEY = 'tintz.matrices.v1';
+const MS_STORE_KEY = 'tintz.msconf.v1';
 function getStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ return []; } }
 function setStore(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
-function serializeState(){
-  return { firstName: $("#firstName")?.value || "", clientEmail: $("#clientEmail")?.value || "", clientPhone: $("#clientPhone")?.value || "",
-    serviceAddress: $("#serviceAddress")?.value || "", projectName: $("#projectName")?.value || "", jobZip: $("#jobZip")?.value || "", miles: $("#miles")?.value || "0",
-    rows: rows, ceramicMatrix: ceramicMatrix, solarMatrix: solarMatrix };
-}
-function loadState(s){
-  if(!s) return;
-  $("#firstName").value = s.firstName || ""; $("#clientEmail").value = s.clientEmail || ""; $("#clientPhone").value = s.clientPhone || "";
-  $("#serviceAddress").value = s.serviceAddress || ""; $("#projectName").value = s.projectName || ""; $("#jobZip").value = s.jobZip || "";
-  $("#miles").value = s.miles || "0"; rows = Array.isArray(s.rows) ? s.rows.map(r=>({...r})) : [];
-  nextRowId = rows.reduce((m, r)=> Math.max(m, r.id||0), 0) + 1;
-  ceramicMatrix = Array.isArray(s.ceramicMatrix) ? s.ceramicMatrix.map(t=>({...t})) : ceramicMatrix;
-  solarMatrix = Array.isArray(s.solarMatrix) ? s.solarMatrix.map(t=>({...t})) : solarMatrix;
-  renderRows();
-}
-function openCustomersModal(){
-  const modal = $("#customersModal"); const list = $("#customersList"); const search = $("#customerSearch");
-  function render(filterText){
-    const data = getStore(); list.innerHTML = ''; const f = (filterText||'').toLowerCase().trim();
-    const filtered = !f ? data : data.filter(rec => {
-      const hay = [rec.label, rec.firstName, rec.projectName, rec.clientEmail, rec.serviceAddress, rec.jobZip].filter(Boolean).join(' ').toLowerCase();
-      return hay.indexOf(f) !== -1;
-    });
-    if(!filtered.length){ list.innerHTML = '<div class="muted">No matching customers.</div>'; return; }
-    filtered.forEach((rec, idx)=>{
-      const div = document.createElement('div'); div.className = 'card';
-      const created = rec.createdAt ? new Date(rec.createdAt).toLocaleString() : '';
-      div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:start; gap:8px;">
-          <div>
-            <div><strong>${escapeHtml(rec.label || (rec.firstName || '') + ' — ' + (rec.projectName || ''))}</strong></div>
-            <div class="muted small">${escapeHtml(rec.clientEmail || '')} • ${escapeHtml(rec.projectName || '')}</div>
-            <div class="muted small">${escapeHtml(rec.serviceAddress || '')}</div>
-            <div class="muted small">Saved: ${escapeHtml(created)}</div>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn" data-idx="${idx}" data-act="load">Load</button>
-            <button class="btn" data-idx="${idx}" data-act="delete">Delete</button>
-          </div>
-        </div>`;
-      list.appendChild(div);
-    });
-  }
-  render(''); if (search){ search.oninput = ()=> render(search.value); }
-  list.onclick = (e)=>{
-    const t = e.target; if(!t.dataset || t.dataset.idx===undefined) return;
-    const idx = Number(t.dataset.idx); const data = getStore();
-    if(t.dataset.act==='load'){ loadState(data[idx]); alert('Customer loaded.'); }
-    else if(t.dataset.act==='delete'){ if(confirm('Delete this saved customer from this device?')){ data.splice(idx,1); setStore(data); render(search ? search.value : ''); } }
-  };
-  $("#closeCustomers").onclick = ()=>{ modal.style.display='none'; };
-  modal.style.display = 'flex';
-}
+function getMatrices(){ try { return JSON.parse(localStorage.getItem(MATRIX_STORE_KEY) || 'null'); } catch(e){ return null; } }
+function setMatrices(obj){ localStorage.setItem(MATRIX_STORE_KEY, JSON.stringify(obj)); }
+function getMsConf(){ try { return JSON.parse(localStorage.getItem(MS_STORE_KEY) || 'null'); } catch(e){ return null; } }
+function setMsConf(conf){ localStorage.setItem(MS_STORE_KEY, JSON.stringify(conf)); }
 
 // Data
 let rows = [ { id: 1, area: 'Lobby North', widthIn: 48, heightIn: 72, qty: 2, notes: '' }, { id: 2, area: 'Conference A', widthIn: 60, heightIn: 60, qty: 3, notes: '' } ];
@@ -276,6 +226,8 @@ let nextRowId = 3;
 const SHOP_MIN_SQFT = 18, SHOP_MIN_LOCAL = 250, SHOP_MIN_REMOTE = 350;
 let ceramicMatrix = [ { min:0, max:49, rate:12.0, label:'$12 (0–49)' }, { min:50, max:99, rate:11.0, label:'$11 (50–99)' }, { min:100, max:199, rate:10.0, label:'$10 (100–199)' }, { min:200, max:299, rate:9.0, label:'$9 (200–299)' }, { min:300, max:399, rate:8.0, label:'$8 (300–399)' }, { min:400, max:499, rate:7.0, label:'$7 (400–499)' }, { min:500, max:Infinity, rate:6.5, label:'$6.50 (500+)' } ];
 let solarMatrix   = [ { min:0, max:99, rate:7.5, label:'$7.50 (0–99)' }, { min:100, max:199, rate:6.5, label:'$6.50 (100–199)' }, { min:200, max:299, rate:6.0, label:'$6.00 (200–299)' }, { min:300, max:399, rate:5.5, label:'$5.50 (300–399)' }, { min:400, max:Infinity, rate:5.0, label:'$5.00 (400+)' } ];
+// seed matrices if absent
+(function(){ const saved = getMatrices(); if(saved && saved.ceramic && saved.solar){ ceramicMatrix = saved.ceramic; solarMatrix = saved.solar; } else { setMatrices({ ceramic: ceramicMatrix, solar: solarMatrix }); } })();
 
 // Rendering & pricing
 function rowSqft(r){ return ((num(r.widthIn)||0)*(num(r.heightIn)||0)*(num(r.qty)||0))/144; }
@@ -369,30 +321,58 @@ function renderMatrixEditor(container, matrix, onChange){
 }
 function openSettings(){
   const modal=$("#settingsModal");
-  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix=[...m]; updateTotalsAndPricing(); openSettings(); });
-  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix=[...m]; updateTotalsAndPricing(); openSettings(); });
-  $("#addCerTier").onclick=()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
-  $("#addSolTier").onclick=()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); openSettings(); };
+  renderMatrixEditor($("#ceramicMatrixEditor"), ceramicMatrix, (m)=>{ ceramicMatrix=[...m]; setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); });
+  renderMatrixEditor($("#solarMatrixEditor"), solarMatrix, (m)=>{ solarMatrix=[...m]; setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); });
+  $("#addCerTier").onclick=()=>{ ceramicMatrix.push({min:0,max:0,rate:0,label:'Custom'}); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); openSettings(); };
+  $("#addSolTier").onclick=()=>{ solarMatrix.push({min:0,max:0,rate:0,label:'Custom'}); setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); openSettings(); };
+  $("#btnResetMatrices").onclick=()=>{ ceramicMatrix=[ { min:0, max:49, rate:12.0, label:'$12 (0–49)' }, { min:50, max:99, rate:11.0, label:'$11 (50–99)' }, { min:100, max:199, rate:10.0, label:'$10 (100–199)' }, { min:200, max:299, rate:9.0, label:'$9 (200–299)' }, { min:300, max:399, rate:8.0, label:'$8 (300–399)' }, { min:400, max:499, rate:7.0, label:'$7 (400–499)' }, { min:500, max:Infinity, rate:6.5, label:'$6.50 (500+)' } ]; solarMatrix=[ { min:0, max:99, rate:7.5, label:'$7.50 (0–99)' }, { min:100, max:199, rate:6.5, label:'$6.50 (100–199)' }, { min:200, max:299, rate:6.0, label:'$6.00 (200–299)' }, { min:300, max:399, rate:5.5, label:'$5.50 (300–399)' }, { min:400, max:Infinity, rate:5.0, label:'$5.00 (400+)' } ]; setMatrices({ceramic:ceramicMatrix, solar:solarMatrix}); updateTotalsAndPricing(); openSettings(); };
+  // MSAL config
+  const cid = document.getElementById('msClientId'); const status = document.getElementById('msStatus');
+  const conf = getMsConf() || { clientId: '', redirectUri: window.location.origin + window.location.pathname };
+  if(cid) cid.value = conf.clientId || '';
+  function setStatus(text){ if(status) status.value = text; }
+  let msalApp = null, msAccount = null;
+  function msInit(){
+    if(!conf.clientId){ setStatus('Not connected'); return; }
+    try{
+      msalApp = new msal.PublicClientApplication({
+        auth: { clientId: conf.clientId, authority: 'https://login.microsoftonline.com/common', redirectUri: conf.redirectUri || window.location.origin + window.location.pathname },
+        cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+      });
+      msalApp.handleRedirectPromise().then((res)=>{
+        if(res && res.account){ msAccount = res.account; setStatus('Connected: ' + (msAccount.username||'Account')); }
+        else { const a = msalApp.getAllAccounts(); if(a.length){ msAccount=a[0]; setStatus('Connected: ' + (msAccount.username||'Account')); } else { setStatus('Not connected'); } }
+      }).catch(()=> setStatus('Auth error'));
+    }catch(e){ setStatus('MSAL init error'); }
+  }
+  msInit();
+  const bSave = document.getElementById('btnMsSave'); if(bSave){ bSave.onclick = ()=>{ const updated = { clientId: document.getElementById('msClientId').value.trim(), redirectUri: window.location.origin + window.location.pathname }; setMsConf(updated); alert('Saved.'); location.reload(); }; }
+  const bLogin = document.getElementById('btnMsLogin'); if(bLogin){ bLogin.onclick = ()=>{ if(!msalApp){ alert('Save Client ID first.'); return; } msalApp.loginRedirect({ scopes: ['User.Read','Mail.Send'] }); }; }
+  const bLogout = document.getElementById('btnMsLogout'); if(bLogout){ bLogout.onclick = ()=>{ if(!msalApp || !msAccount){ alert('Not signed in.'); return; } msalApp.logoutRedirect({ account: msAccount }); }; }
+  const bTest = document.getElementById('btnTestSend'); if(bTest){ bTest.onclick = async ()=>{
+      if(!msalApp){ alert('Save Client ID first.'); return; }
+      const a = msalApp.getAllAccounts(); if(!a.length){ alert('Sign in first.'); return; }
+      const token = await msalApp.acquireTokenSilent({ account: a[0], scopes: ['Mail.Send'] }).catch(()=>null);
+      if(!token){ msalApp.acquireTokenRedirect({ account: a[0], scopes: ['Mail.Send'] }); return; }
+      const me = a[0].username;
+      const html = buildEmailHtml();
+      const payload = { message: { subject: 'Test — Dynamic Tintz PWA', body: { contentType:'HTML', content: html }, toRecipients: [{ emailAddress:{ address: me }}] }, saveToSentItems: true };
+      const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', { method:'POST', headers:{ 'Authorization':'Bearer '+token.accessToken, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+      if(res.ok) alert('Test sent to ' + me); else alert('Graph send failed');
+    }; }
   $("#btnCloseSettings").onclick=()=>{ modal.style.display='none'; };
-  modal.style.display='flex';
 }
 
-// Email modal
-function openEmail(){
-  const html = buildEmailHtml();
-  $("#subjectEcho").textContent = ($("#projectName")?.value || "").trim();
-  const frame=$("#emailFrame");
-  if ('srcdoc' in frame) { frame.srcdoc = html; } else { frame.setAttribute('src','data:text/html;charset=utf-8,'+encodeURIComponent(html)); }
-  $("#emailModal").style.display='flex';
-}
+// Email send
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>{ t.remove(); }, 2200); }
 function openOutlookCompose(){
   const to = ($("#clientEmail")?.value || '').trim();
   const subject = `Your Window Film Proposal — ${($("#projectName")?.value || '').trim()}`;
-  const div = document.createElement('div'); div.innerHTML = buildEmailHtml();
-  const body = div.innerText;
+  const html = buildEmailHtml();
   const enc = encodeURIComponent;
-  const outlook = `ms-outlook://compose?to=${enc(to)}&subject=${enc(subject)}&body=${enc(body)}`;
-  const mailto = `mailto:${enc(to)}?subject=${enc(subject)}&body=${enc(body)}`;
+  const plain = html.replace(/<[^>]+>/g,''); // fallback uses plain text
+  const outlook = `ms-outlook://compose?to=${enc(to)}&subject=${enc(subject)}&body=${enc(plain)}`;
+  const mailto = `mailto:${enc(to)}?subject=${enc(subject)}&body=${enc(plain)}`;
   window.location.href = outlook; setTimeout(()=>{ window.location.href = mailto; }, 700);
 }
 
@@ -401,13 +381,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const bind=(id,fn)=>{ const el=document.getElementById(id); if(!el) return; el.addEventListener('click',fn,false); el.addEventListener('touchend',(e)=>{e.preventDefault(); fn(e);}, false); };
   bind('btnAddRow', ()=>{ rows.push({ id: nextRowId++, area:'', widthIn:0, heightIn:0, qty:1, notes:'' }); renderRows(); });
   bind('btnSettings', openSettings);
-  bind('btnEmail', openEmail);
-  bind('btnCopy', ()=>{ const div=document.createElement('div'); div.innerHTML=buildEmailHtml(); const text=div.innerText; navigator.clipboard.writeText(text).then(()=>alert('Email (plain text) copied.')).catch(()=>alert('Clipboard not available. Open preview to copy.')); });
   bind('btnOutlook', openOutlookCompose);
-  bind('btnSaveCustomer', ()=>{ const state=serializeState(); const suggested=(state.firstName||'Customer')+' — '+(state.projectName||'Project'); const label=prompt('Save as:', suggested); if(label===null) return; const rec={...state,label,createdAt:Date.now()}; const data=getStore(); data.unshift(rec); setStore(data); alert('Saved to this device.'); });
-  bind('btnCustomers', openCustomersModal);
+  bind('btnSaveCustomer', ()=>{ const state={ firstName: $("#firstName")?.value || "", clientEmail: $("#clientEmail")?.value || "", clientPhone: $("#clientPhone")?.value || "", serviceAddress: $("#serviceAddress")?.value || "", projectName: $("#projectName")?.value || "", jobZip: $("#jobZip")?.value || "", miles: $("#miles")?.value || "0", rows: rows, ceramicMatrix: ceramicMatrix, solarMatrix: solarMatrix }; const suggested=(state.firstName||'Customer')+' — '+(state.projectName||'Project'); const label=prompt('Save as:', suggested); if(label===null) return; const rec={...state,label,createdAt:Date.now()}; const data=getStore(); data.unshift(rec); setStore(data); toast('Saved to this device.'); });
+  bind('btnCustomers', ()=>{
+    const modal = $("#customersModal"); const list = $("#customersList"); const search = $("#customerSearch");
+    function render(filterText){ const data=getStore(); list.innerHTML=''; const f=(filterText||'').toLowerCase().trim(); const filtered = !f ? data : data.filter(rec => { const hay=[rec.label,rec.firstName,rec.projectName,rec.clientEmail,rec.serviceAddress,rec.jobZip].filter(Boolean).join(' ').toLowerCase(); return hay.indexOf(f)!==-1; }); if(!filtered.length){ list.innerHTML='<div class=\"muted\">No matching customers.</div>'; return; } filtered.forEach((rec, idx)=>{ const div=document.createElement('div'); div.className='card'; const created=rec.createdAt?new Date(rec.createdAt).toLocaleString():''; div.innerHTML=`<div style=\"display:flex; justify-content:space-between; align-items:start; gap:8px;\"><div><div><strong>${escapeHtml(rec.label || (rec.firstName||'') + ' — ' + (rec.projectName||''))}</strong></div><div class=\"muted small\">${escapeHtml(rec.clientEmail || '')} • ${escapeHtml(rec.projectName || '')}</div><div class=\"muted small\">${escapeHtml(rec.serviceAddress || '')}</div><div class=\"muted small\">Saved: ${escapeHtml(created)}</div></div><div style=\"display:flex; gap:8px;\"><button class=\"btn\" data-idx=\"${idx}\" data-act=\"load\">Load</button><button class=\"btn\" data-idx=\"${idx}\" data-act=\"delete\">Delete</button></div></div>`; list.appendChild(div); }); }
+    render(''); if (search){ search.oninput = ()=> render(search.value); }
+    list.onclick = (e)=>{ const t=e.target; if(!t.dataset||t.dataset.idx===undefined) return; const idx=Number(t.dataset.idx); const data=getStore(); if(t.dataset.act==='load'){ const rec=data[idx]; $("#firstName").value=rec.firstName||''; $("#clientEmail").value=rec.clientEmail||''; $("#clientPhone").value=rec.clientPhone||''; $("#serviceAddress").value=rec.serviceAddress||''; $("#projectName").value=rec.projectName||''; $("#jobZip").value=rec.jobZip||''; $("#miles").value=rec.miles||'0'; rows=Array.isArray(rec.rows)?rec.rows.map(r=>({...r})):[]; nextRowId=rows.reduce((m,r)=>Math.max(m,r.id||0),0)+1; ceramicMatrix=Array.isArray(rec.ceramicMatrix)?rec.ceramicMatrix.map(t=>({...t})):ceramicMatrix; solarMatrix=Array.isArray(rec.solarMatrix)?rec.solarMatrix.map(t=>({...t})):solarMatrix; renderRows(); toast('Customer loaded.'); } else if(t.dataset.act==='delete'){ if(confirm('Delete this saved customer from this device?')){ data.splice(idx,1); setStore(data); render(search?search.value:''); } } };
+    document.getElementById('closeCustomers').onclick = ()=>{ modal.style.display='none'; };
+    modal.style.display='flex';
+  });
   const milesEl=document.getElementById('miles'); if(milesEl){ milesEl.addEventListener('input', updateTotalsAndPricing); milesEl.addEventListener('change', updateTotalsAndPricing); }
   const autoBtn=document.getElementById('btnAutoMiles'); if(autoBtn){ autoBtn.addEventListener('click', async ()=>{ const btn=document.getElementById('btnAutoMiles'); const jobZip=document.getElementById('jobZip').value.trim(); if(!/^\d{5}$/.test(jobZip)){ alert('Enter a valid 5-digit Job ZIP.'); return; } btn.disabled=true; const oldText=btn.textContent; btn.textContent='Calculating…'; try{ const [shop,job]=await Promise.all([ zipToLatLng('75409'), zipToLatLng(jobZip) ]); const miles=haversineMiles(shop,job); const rounded=Math.round(miles); document.getElementById('miles').value=String(rounded); updateTotalsAndPricing(); }catch(e){ alert('Could not resolve ZIP distance. You can enter miles manually.'); } finally{ btn.disabled=false; btn.textContent=oldText; } }, false); autoBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); autoBtn.click(); }, false); }
+  bind('btnEmail', async ()=>{
+    const to = ($("#clientEmail")?.value || '').trim();
+    if(!to){ alert('Enter a Client Email first.'); return; }
+    const subject = `Your Window Film Proposal — ${($("#projectName")?.value || '').trim()}`;
+    const html = buildEmailHtml();
+    // Try Microsoft Graph first if configured
+    try{
+      const conf = getMsConf(); if(conf && conf.clientId){\n        const app = new msal.PublicClientApplication({ auth: { clientId: conf.clientId, authority: 'https://login.microsoftonline.com/common', redirectUri: conf.redirectUri || window.location.origin + window.location.pathname }, cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false } });\n        const accts = app.getAllAccounts(); if(!accts.length){ toast('Sign in via Settings first. Falling back to Outlook compose.'); throw new Error('noaccount'); }\n        const token = await app.acquireTokenSilent({ account: accts[0], scopes: ['Mail.Send'] }).catch(()=>null);\n        if(!token){ app.acquireTokenRedirect({ account: accts[0], scopes: ['Mail.Send'] }); return; }\n        const payload = { message: { subject: subject, body: { contentType:'HTML', content: html }, toRecipients: [{ emailAddress:{ address: to }}] }, saveToSentItems: true };\n        const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', { method:'POST', headers:{ 'Authorization':'Bearer '+token.accessToken, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });\n        if(res.ok){ toast('Email sent via Microsoft 365.'); return; } else { const txt = await res.text(); console.log(txt); toast('Graph send failed. Using Outlook.'); throw new Error('graphfail'); }\n      }\n    }catch(e){ /* fallthrough to Outlook */ }\n    // Fallback: Outlook compose (user taps Send)\n    const enc = encodeURIComponent; const plain = html.replace(/<[^>]+>/g,''); const outlook = `ms-outlook://compose?to=${enc(to)}&subject=${enc(subject)}&body=${enc(plain)}`; const mailto = `mailto:${enc(to)}?subject=${enc(subject)}&body=${enc(plain)}`; window.location.href = outlook; setTimeout(()=>{ window.location.href = mailto; }, 700);\n  });
   renderRows();
 });
 
