@@ -14,7 +14,7 @@
 body{ margin:0; font:16px/1.7 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color:var(--ink); background:var(--bg); }
 .wrap{ max-width:1240px; margin:0 auto; padding:24px 16px; }
 h1{ font-size:28px; margin:0 0 4px; } .sub{ color:var(--muted); font-size:14px; margin:0; }
-header{ display:flex; gap:12px; flex-direction:column; }
+header{ display:flex; gap:12px; flex-direction:column; position:relative; }
 @media (min-width:640px){ header{ flex-direction:row; align-items:center; justify-content:space-between; } }
 .btn{ border:1px solid #e2e8f0; background:#fff; padding:14px 18px; border-radius:16px; box-shadow:0 1px 2px rgb(0 0 0 / 0.06); font-size:16px; cursor:pointer; }
 .btn.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -36,6 +36,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
 .small{ font-size:12px; } .pill{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; color:#3730a3; }
 .link{ color:#2563eb; cursor:pointer; } .danger{ color:#b91c1c; }
 .toast{ position:fixed; bottom:16px; right:16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:12px; opacity:.95; z-index:99999; }
+.status{ position:absolute; right:0; top:-8px; transform:translateY(-100%); background:#10b981; color:#fff; font-size:12px; padding:4px 8px; border-radius:999px; box-shadow:0 1px 2px rgb(0 0 0 / .08); }
 
 /* Mobile-first spacing boost */
 @media (max-width:480px){
@@ -47,6 +48,9 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
   .card{ padding:14px; }
   .table-scroller{ overflow:auto; -webkit-overflow-scrolling:touch; border-radius:16px; border:1px solid #e2e8f0; background:#fff; }
 }
+.modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.15); padding:10px; z-index:9999;}
+.modal{ background:#fff; border:1px solid #e2e8f0; border-radius:16px; width:min(900px,96vw); max-height:86vh; overflow:auto; }
+.modal header{ display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #e2e8f0; }
 </style>
 <script>
 "use strict";
@@ -118,8 +122,8 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     var sqft=totalSqft(); var totalEl=$("#totalSqft"); if(totalEl) totalEl.textContent=sqft.toFixed(2);
     var milesEl=$("#miles"); var milesVal=milesEl?parseIntSafe(milesEl.value):0; var milesEcho=$("#milesEcho"); if(milesEcho) milesEcho.textContent=milesVal;
     var cer=calcFilm(ceramicMatrix, sqft, milesVal); var sol=calcFilm(solarMatrix, sqft, milesVal);
-    var map=[["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",cer.tierPct+\"%\"],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
-             ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",sol.tierPct+\"%\"],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]];
+    var map=[["cerOrig",money(cer.original)],["cerTier",cer.tierLabel],["cerDisc",cer.tierPct + \"%\"],["cerFinal",money(cer.finalPrice)],["cerSave",money(cer.savings)],
+             ["solOrig",money(sol.original)],["solTier",sol.tierLabel],["solDisc",sol.tierPct + \"%\"],["solFinal",money(sol.finalPrice)],["solSave",money(sol.savings)]];
     for(var i=0;i<map.length;i++){ var el=document.getElementById(map[i][0]); if(el){ el.textContent=map[i][1]; } }
   }
 
@@ -138,7 +142,6 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
         + '<td class="ta-r"><span class="link" data-act="dup" data-id="'+r.id+'">Duplicate</span> | <span class="link danger" data-act="del" data-id="'+r.id+'">Delete</span></td>';
       tbody.appendChild(tr);
     }
-    // Input: keep raw text; recompute; do not mutate value while typing
     tbody.addEventListener("input", function(e){
       var t=e.target; if(!t.dataset || !t.dataset.id) return;
       var id=parseInt(t.dataset.id,10), key=t.dataset.k;
@@ -148,7 +151,6 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       var sq=rowSqft(row); var cell=document.getElementById("sqft-"+id); if(cell) cell.textContent=sq.toFixed(2);
       updateTotalsAndPricing();
     }, { passive:true });
-    // Change/blur: gentle sanitize
     tbody.addEventListener("change", function(e){
       var t=e.target; if(!t.dataset || !t.dataset.id) return;
       var id=parseInt(t.dataset.id,10), key=t.dataset.k;
@@ -159,7 +161,6 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       var sq=rowSqft(row); var cell=document.getElementById("sqft-"+id); if(cell) cell.textContent=sq.toFixed(2);
       updateTotalsAndPricing();
     });
-    // Actions
     tbody.addEventListener("click", function(e){
       var t=e.target; if(!t.dataset || !t.dataset.act) return; var id=parseInt(t.dataset.id,10);
       if(t.dataset.act==='del'){
@@ -228,14 +229,12 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     copyHtmlToClipboard(html).then(function(){ toast("Formatted email copied. Paste in compose to keep styling."); }).catch(function(){});
     var div=document.createElement("div"); div.innerHTML=html; var plain=(div.innerText||"");
     if(plain.length>1800){ plain=plain.slice(0,1797)+"..."; }
-    plain=plain.replace(/\n{3,}/g,"\n\n");
-    plain=plain.replace(/\r?\n/g,"\r\n"); // normalize CRLF
-    var body=encodeURIComponent(plain);   // encode entire body so % and + are safe
+    plain=plain.replace(/\n{3,}/g,"\n\n").replace(/\r?\n/g,"\r\n");
+    var body=encodeURIComponent(plain);
     var href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subject)+"&body="+body;
     var a=document.createElement("a"); a.href=href; a.style.display="none"; document.body.appendChild(a); a.click(); setTimeout(function(){ document.body.removeChild(a); }, 300);
   }
 
-  // Distance helpers
   function zipToLatLng(zip){
     return fetch("https://api.zippopotam.us/us/"+encodeURIComponent(zip))
       .then(function(res){ if(!res.ok) throw new Error("Invalid ZIP"); return res.json(); })
@@ -249,7 +248,6 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     return 2*R*Math.asin(Math.sqrt(h));
   }
 
-  // Clear All logic
   function clearAll(){
     if(!confirm("Clear all current inputs and line items? Saved customers and pricing matrices will remain.")) return;
     document.getElementById("firstName").value="";
@@ -265,12 +263,9 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     toast("Cleared. Ready for a new customer.");
   }
 
-  function bind(id, fn){ var el=document.getElementById(id); if(el){ el.addEventListener("click", fn, false); } }
-
-  document.addEventListener("DOMContentLoaded", function(){
-    bind("btnAddRow", function(){ rows.push({ id:nextRowId++, area:"", widthIn:"0", heightIn:"0", qty:"1", notes:"" }); renderRows(); });
-    bind("btnClearAll", clearAll);
-    bind("btnSettings", function(){ var m=document.getElementById("settingsModal"); if(!m) return;
+  // Expose App methods for inline handlers
+  window.App = {
+    openSettings: function(){ var m=document.getElementById("settingsModal"); if(!m) return;
       function renderMatrixEditor(container, matrix, onChange){
         container.innerHTML="";
         for(var i=0;i<matrix.length;i++){
@@ -304,9 +299,8 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       }
       openSettings();
       m.style.display="flex";
-    });
-    bind("btnEmail", openCompose);
-    bind("btnSaveCustomer", function(){
+    },
+    saveCustomer: function(){
       var state={
         firstName: document.getElementById("firstName").value,
         clientEmail: document.getElementById("clientEmail").value,
@@ -321,8 +315,8 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       var label=prompt("Save as:", suggested); if(label===null) return;
       var rec=Object.assign({}, state, {label:label, createdAt:Date.now()});
       var data=getStore(); data.unshift(rec); setStore(data); toast("Saved to this device.");
-    });
-    bind("btnCustomers", function(){
+    },
+    openCustomers: function(){
       var modal=document.getElementById("customersModal"); var list=document.getElementById("customersList"); var search=document.getElementById("customerSearch");
       function render(filterText){
         var data=getStore(); list.innerHTML=""; var f=(filterText||"").toLowerCase().trim();
@@ -376,27 +370,37 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       };
       document.getElementById("closeCustomers").onclick=function(){ modal.style.display="none"; };
       modal.style.display="flex";
-    });
+    },
+    addRow: function(){ rows.push({ id:nextRowId++, area:"", widthIn:"0", heightIn:"0", qty:"1", notes:"" }); renderRows(); },
+    clearAll: clearAll,
+    email: openCompose,
+    autoMiles: function(){
+      var jobZip=(document.getElementById("jobZip").value||"").trim();
+      if(!/^[0-9]{5}$/.test(jobZip)){ alert("Enter a valid 5-digit Job ZIP."); return; }
+      var btn=document.getElementById("btnAutoMiles"); if(btn){ btn.disabled=true; var old=btn.textContent; btn.textContent="Calculating…"; }
+      Promise.all([ zipToLatLng("75409"), zipToLatLng(jobZip) ])
+        .then(function(arr){ var miles=Math.round(haversineMiles(arr[0],arr[1])); document.getElementById("miles").value=String(miles); updateTotalsAndPricing(); })
+        .catch(function(){ alert("Could not resolve ZIP distance. You can enter miles manually."); })
+        .finally(function(){ if(btn){ btn.disabled=false; btn.textContent=old; } });
+    }
+  };
 
-    // Miles handlers
-    var milesEl=document.getElementById("miles");
-    if(milesEl){
-      milesEl.addEventListener("input", function(){ updateTotalsAndPricing(); });
-      milesEl.addEventListener("change", function(){ this.value=String(parseIntSafe(this.value)); updateTotalsAndPricing(); });
-    }
-    var autoBtn=document.getElementById("btnAutoMiles");
-    if(autoBtn){
-      autoBtn.addEventListener("click", function(){
-        var jobZip=(document.getElementById("jobZip").value||"").trim();
-        if(!/^[0-9]{5}$/.test(jobZip)){ alert("Enter a valid 5-digit Job ZIP."); return; }
-        autoBtn.disabled=true; var oldText=autoBtn.textContent; autoBtn.textContent="Calculating…";
-        Promise.all([ zipToLatLng("75409"), zipToLatLng(jobZip) ])
-          .then(function(arr){ var miles=Math.round(haversineMiles(arr[0],arr[1])); document.getElementById("miles").value=String(miles); updateTotalsAndPricing(); })
-          .catch(function(){ alert("Could not resolve ZIP distance. You can enter miles manually."); })
-          .finally(function(){ autoBtn.disabled=false; autoBtn.textContent=oldText; });
-      });
-    }
+  function delegateActivate(e){
+    var id=(e.target && e.target.id) || (e.target && e.target.closest && (e.target.closest('button')||{}).id) || "";
+    if(id==="btnSettings"){ App.openSettings(); }
+    else if(id==="btnSaveCustomer"){ App.saveCustomer(); }
+    else if(id==="btnCustomers"){ App.openCustomers(); }
+    else if(id==="btnClearAll"){ App.clearAll(); }
+    else if(id==="btnEmail"){ App.email(); }
+    else if(id==="btnAddRow"){ App.addRow(); }
+    else if(id==="btnAutoMiles"){ App.autoMiles(); }
+  }
+  document.addEventListener("click", delegateActivate, false);
+  document.addEventListener("touchend", function(e){ delegateActivate(e); }, false);
+
+  document.addEventListener("DOMContentLoaded", function(){
     renderRows();
+    var chip=document.createElement('div'); chip.className='status'; chip.textContent='JS: Ready v8.1'; var header=document.querySelector('header'); if(header){ header.appendChild(chip); }
   });
 })();
 </script>
@@ -409,11 +413,11 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
         <p class="sub">Responsive, mobile-first. Add to Home Screen on iPhone/iPad.</p>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn" id="btnSettings">Settings</button>
-        <button class="btn" id="btnSaveCustomer">Save Customer</button>
-        <button class="btn" id="btnCustomers">Customers</button>
-        <button class="btn" id="btnClearAll">Clear All</button>
-        <button class="btn primary" id="btnEmail">Generate Email</button>
+        <button class="btn" id="btnSettings" onclick="App.openSettings()">Settings</button>
+        <button class="btn" id="btnSaveCustomer" onclick="App.saveCustomer()">Save Customer</button>
+        <button class="btn" id="btnCustomers" onclick="App.openCustomers()">Customers</button>
+        <button class="btn" id="btnClearAll" onclick="App.clearAll()">Clear All</button>
+        <button class="btn primary" id="btnEmail" onclick="App.email()">Generate Email</button>
       </div>
     </header>
 
@@ -426,7 +430,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       <div class="row-inline">
         <label class="block" style="min-width: 160px;"><span class="label">Job ZIP Code</span><input id="jobZip" type="tel" value="" placeholder="e.g., 75001"></label>
         <label class="block" style="min-width: 160px;"><span class="label">Miles from 75409</span><input id="miles" type="tel" value="12" placeholder="e.g., 42"></label>
-        <button class="btn" id="btnAutoMiles" title="Calculate by ZIP">Auto-calc distance</button>
+        <button class="btn" id="btnAutoMiles" onclick="App.autoMiles()" title="Calculate by ZIP">Auto-calc distance</button>
       </div>
       <div class="small muted">Auto-calc uses public ZIP geolocation (Zippopotam.us) and Haversine distance. Manual override always allowed.</div>
     </section>
@@ -435,7 +439,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
         <h2 style="margin:0; font-size:18px;">Measurements / Line Items</h2>
         <div style="display:flex; gap:8px;">
-          <button class="btn" id="btnAddRow">+ Add Row</button>
+          <button class="btn" id="btnAddRow" onclick="App.addRow()">+ Add Row</button>
         </div>
       </div>
       <div class="table-scroller">
@@ -485,7 +489,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
       </div>
     </section>
 
-    <div class="muted" style="margin-top:8px;text-align:right;">Build: v7.9</div>
+    <div class="muted" style="margin-top:8px;text-align:right;">Build: v8.1</div>
   </div>
 
   <!-- Customers Modal -->
@@ -493,7 +497,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     <div class="modal">
       <header>
         <div><strong>Saved Customers</strong></div>
-        <button class="btn" id="closeCustomers">Close</button>
+        <button class="btn" id="closeCustomers" onclick="this.closest('.modal-backdrop').style.display='none'">Close</button>
       </header>
       <div class="body" style="padding:12px 16px;">
         <div class="muted" style="margin-bottom:8px;">Tap Load to populate the app. Delete removes the record from this device only.</div>
@@ -508,7 +512,7 @@ td{ border-top:1px solid #e2e8f0; padding:14px 12px; vertical-align:top; }
     <div class="modal">
       <header>
         <div><strong>Settings</strong></div>
-        <button class="btn" id="btnCloseSettings">Close</button>
+        <button class="btn" id="btnCloseSettings" onclick="this.closest('.modal-backdrop').style.display='none'">Close</button>
       </header>
       <div class="body" style="padding: 12px 16px;">
         <p class="muted">Update pricing matrices without code changes.</p>
